@@ -1,0 +1,13 @@
+# kod zoptymalizowany
+GET 1
+LOAD 1
+HALF
+STORE 2
+LOAD 1
+SUB 2
+SUB 2
+PUT 0
+LOAD 2
+STORE 1
+JPOS -8
+HALT
