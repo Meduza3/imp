@@ -7,11 +7,42 @@ import __yyfmt__ "fmt"
 
 //line parser.y:2
 
-import "github.com/Meduza3/imp/token"
+import (
+	"github.com/Meduza3/imp/ast"
+	"github.com/Meduza3/imp/token"
+	"strconv"
+)
 
+func atoi(s string) int64 {
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		// Handle error appropriately
+		return 0
+	}
+	return i
+}
+
+//line parser.y:21
 type YySymType struct {
-	Token *token.Token
-	yys   int
+	yys          int
+	token        *token.Token
+	program      *ast.ProgramAll
+	procedures   []*ast.Procedure
+	main         *ast.Main
+	statements   []ast.Statement
+	statement    ast.Statement
+	expression   ast.Expression
+	expressions  []ast.Expression
+	identifier   ast.Expression
+	integer      int64
+	condition    ast.Expression
+	value        ast.Expression
+	declarations []ast.Declaration
+	arg_decls    []*ast.ArgDeclaration
+	args         []ast.Expression
+	proc_call    *ast.ProcedureCallStatement
+	proc_head    *ast.ProcHead
+	arg_decl     *ast.ArgDeclaration
 }
 
 const ILLEGAL = 57346
@@ -117,7 +148,7 @@ const YyEofCode = 1
 const YyErrCode = 2
 const YyInitialStackSize = 16
 
-//line parser.y:122
+//line parser.y:502
 
 //line yacctab:1
 var YyExca = [...]int{
@@ -145,7 +176,7 @@ var YyAct = [...]int{
 	64, 116, 117, 126, 42, 72, 65, 115, 85, 76,
 	75, 51, 41, 46, 46, 9, 121, 20, 4, 41,
 	41, 20, 5, 11, 92, 93, 94, 95, 96, 97,
-	128, 129, 100, 14, 8, 77, 16, 28, 63, 6,
+	128, 129, 100, 14, 8, 6, 28, 77, 16, 63,
 	3, 2, 1, 0, 107, 108, 109, 110, 111, 24,
 	0, 112, 113, 25, 0, 0, 26, 0, 27, 0,
 	0, 0, 24, 29, 30, 125, 25, 0, 0, 26,
@@ -182,16 +213,16 @@ var YyPact = [...]int{
 }
 
 var YyPgo = [...]int{
-	0, 152, 151, 150, 149, 133, 13, 0, 6, 148,
-	8, 67, 147, 146, 145,
+	0, 152, 151, 150, 13, 0, 149, 8, 67, 6,
+	133, 148, 147, 146, 145,
 }
 
 var YyR1 = [...]int{
-	0, 1, 2, 2, 2, 3, 3, 6, 6, 7,
-	7, 7, 7, 7, 7, 7, 7, 7, 7, 4,
-	12, 5, 5, 5, 5, 13, 13, 13, 13, 14,
-	14, 9, 9, 9, 9, 9, 9, 10, 10, 10,
-	10, 10, 10, 11, 11, 8, 8, 8,
+	0, 1, 2, 2, 2, 3, 3, 4, 4, 5,
+	5, 5, 5, 5, 5, 5, 5, 5, 5, 14,
+	13, 10, 10, 10, 10, 11, 11, 11, 11, 12,
+	12, 6, 6, 6, 6, 6, 6, 7, 7, 7,
+	7, 7, 7, 8, 8, 9, 9, 9,
 }
 
 var YyR2 = [...]int{
@@ -203,19 +234,19 @@ var YyR2 = [...]int{
 }
 
 var YyChk = [...]int{
-	-1000, -1, -2, -3, 6, 10, -4, 48, 7, 7,
-	29, -5, 8, 48, -5, 8, -13, 48, 35, 8,
-	31, -6, -7, -8, 13, 17, 20, 22, -12, 27,
-	28, 48, 32, 8, -6, 30, 31, 48, -6, 48,
-	9, -7, 11, -10, -11, 47, -8, 48, -10, -6,
-	48, 12, -8, -11, 29, 32, 47, -6, 9, 48,
-	35, 9, 32, -9, -11, 14, 41, 42, 43, 44,
-	45, 46, 18, 21, 23, 12, 12, -14, 48, 48,
+	-1000, -1, -2, -3, 6, 10, -14, 48, 7, 7,
+	29, -10, 8, 48, -10, 8, -11, 48, 35, 8,
+	31, -4, -5, -9, 13, 17, 20, 22, -13, 27,
+	28, 48, 32, 8, -4, 30, 31, 48, -4, 48,
+	9, -5, 11, -7, -8, 47, -9, 48, -7, -4,
+	48, 12, -9, -8, 29, 32, 47, -4, 9, 48,
+	35, 9, 32, -6, -8, 14, 41, 42, 43, 44,
+	45, 46, 18, 21, 23, 12, 12, -12, 48, 48,
 	47, 34, 9, 48, 47, 12, 36, 37, 38, 39,
-	40, -6, -11, -11, -11, -11, -11, -11, -6, -10,
-	-11, 30, 31, 33, 33, 47, 34, -11, -11, -11,
-	-11, -11, 15, 16, 19, 12, 24, 25, 48, 33,
-	47, -6, -11, -11, 33, 16, 18, 18, -6, -6,
+	40, -4, -8, -8, -8, -8, -8, -8, -4, -7,
+	-8, 30, 31, 33, 33, 47, 34, -8, -8, -8,
+	-8, -8, 15, 16, 19, 12, 24, 25, 48, 33,
+	47, -4, -8, -8, 33, 16, 18, 18, -4, -4,
 	26, 26,
 }
 
@@ -589,6 +620,481 @@ Yydefault:
 	// dummy call; replaced with literal code
 	switch Yynt {
 
+	case 1:
+		YyDollar = YyS[Yypt-2 : Yypt+1]
+//line parser.y:81
+		{
+			YyVAL.program = &ast.ProgramAll{
+				Procedures: YyDollar[1].procedures,
+				Main:       YyDollar[2].main,
+			}
+		}
+	case 2:
+		YyDollar = YyS[Yypt-8 : Yypt+1]
+//line parser.y:91
+		{
+			YyVAL.procedures = append(YyDollar[1].procedures, &ast.Procedure{
+				Token:        YyDollar[2].token,
+				Head:         YyDollar[3].proc_head,
+				Declarations: YyDollar[5].declarations,
+				Commands:     YyDollar[7].statements,
+			})
+		}
+	case 3:
+		YyDollar = YyS[Yypt-7 : Yypt+1]
+//line parser.y:100
+		{
+			YyVAL.procedures = append(YyDollar[1].procedures, &ast.Procedure{
+				Token:        YyDollar[2].token,
+				Head:         YyDollar[3].proc_head,
+				Declarations: nil,
+				Commands:     YyDollar[6].statements,
+			})
+		}
+	case 4:
+		YyDollar = YyS[Yypt-0 : Yypt+1]
+//line parser.y:109
+		{
+			YyVAL.procedures = []*ast.Procedure{}
+		}
+	case 5:
+		YyDollar = YyS[Yypt-6 : Yypt+1]
+//line parser.y:116
+		{
+			YyVAL.main = &ast.Main{
+				Token:        YyDollar[1].token,
+				Declarations: YyDollar[3].declarations,
+				Commands:     YyDollar[5].statements,
+			}
+		}
+	case 6:
+		YyDollar = YyS[Yypt-5 : Yypt+1]
+//line parser.y:124
+		{
+			YyVAL.main = &ast.Main{
+				Token:        YyDollar[1].token,
+				Declarations: nil,
+				Commands:     YyDollar[4].statements,
+			}
+		}
+	case 7:
+		YyDollar = YyS[Yypt-2 : Yypt+1]
+//line parser.y:135
+		{
+			YyVAL.statements = append(YyDollar[1].statements, YyDollar[2].statement)
+		}
+	case 8:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:139
+		{
+			YyVAL.statements = []ast.Statement{YyDollar[1].statement}
+		}
+	case 9:
+		YyDollar = YyS[Yypt-4 : Yypt+1]
+//line parser.y:146
+		{
+			YyVAL.statement = &ast.AssignmentStatement{
+				Token: YyDollar[2].token,
+				Left:  YyDollar[1].identifier,
+				Right: YyDollar[3].expression,
+			}
+		}
+	case 10:
+		YyDollar = YyS[Yypt-7 : Yypt+1]
+//line parser.y:154
+		{
+			YyVAL.statement = &ast.IfStatement{
+				Token:       YyDollar[1].token,
+				Condition:   YyDollar[2].condition,
+				Consequence: YyDollar[4].statements,
+				Alternative: YyDollar[6].statements,
+			}
+		}
+	case 11:
+		YyDollar = YyS[Yypt-5 : Yypt+1]
+//line parser.y:163
+		{
+			YyVAL.statement = &ast.IfStatement{
+				Token:       YyDollar[1].token,
+				Condition:   YyDollar[2].condition,
+				Consequence: YyDollar[4].statements,
+				Alternative: nil,
+			}
+		}
+	case 12:
+		YyDollar = YyS[Yypt-5 : Yypt+1]
+//line parser.y:172
+		{
+			YyVAL.statement = &ast.WhileStatement{
+				Token:     YyDollar[1].token,
+				Condition: YyDollar[2].condition,
+				Body:      YyDollar[4].statements,
+			}
+		}
+	case 13:
+		YyDollar = YyS[Yypt-5 : Yypt+1]
+//line parser.y:180
+		{
+			YyVAL.statement = &ast.RepeatStatement{
+				Token:     YyDollar[1].token,
+				Body:      YyDollar[2].statements,
+				Condition: YyDollar[4].condition,
+			}
+		}
+	case 14:
+		YyDollar = YyS[Yypt-9 : Yypt+1]
+//line parser.y:188
+		{
+			YyVAL.statement = &ast.ForStatement{
+				Token:    YyDollar[1].token,
+				Iterator: &ast.Identifier{Token: YyDollar[2].token, Value: YyDollar[2].token.Literal},
+				From:     YyDollar[4].value,
+				To:       YyDollar[6].value,
+				DownTo:   false,
+				Body:     YyDollar[8].statements,
+			}
+		}
+	case 15:
+		YyDollar = YyS[Yypt-9 : Yypt+1]
+//line parser.y:199
+		{
+			YyVAL.statement = &ast.ForStatement{
+				Token:    YyDollar[1].token,
+				Iterator: &ast.Identifier{Token: YyDollar[2].token, Value: YyDollar[2].token.Literal},
+				From:     YyDollar[4].value,
+				To:       YyDollar[6].value,
+				DownTo:   true,
+				Body:     YyDollar[8].statements,
+			}
+		}
+	case 16:
+		YyDollar = YyS[Yypt-2 : Yypt+1]
+//line parser.y:210
+		{
+			YyVAL.statement = YyDollar[1].proc_call
+		}
+	case 17:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:214
+		{
+			YyVAL.statement = &ast.ReadStatement{
+				Token:      YyDollar[1].token,
+				Identifier: YyDollar[2].identifier,
+			}
+		}
+	case 18:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:221
+		{
+			YyVAL.statement = &ast.WriteStatement{
+				Token: YyDollar[1].token,
+				Value: YyDollar[2].value,
+			}
+		}
+	case 19:
+		YyDollar = YyS[Yypt-4 : Yypt+1]
+//line parser.y:231
+		{
+			YyVAL.proc_head = &ast.ProcHead{
+				Name:     &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal},
+				ArgsDecl: YyDollar[3].arg_decls,
+			}
+		}
+	case 20:
+		YyDollar = YyS[Yypt-4 : Yypt+1]
+//line parser.y:241
+		{
+			YyVAL.proc_call = &ast.ProcedureCallStatement{
+				Token:     YyDollar[1].token,
+				Name:      &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal},
+				Arguments: YyDollar[3].args,
+			}
+		}
+	case 21:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:252
+		{
+			ident := &ast.Identifier{Token: YyDollar[3].token, Value: YyDollar[3].token.Literal}
+			YyVAL.declarations = append(YyDollar[1].declarations, &ast.VarDeclaration{
+				Token: YyDollar[3].token,
+				Name:  ident,
+			})
+		}
+	case 22:
+		YyDollar = YyS[Yypt-8 : Yypt+1]
+//line parser.y:260
+		{
+			fromVal := &ast.IntegerLiteral{Token: YyDollar[5].token, Value: atoi(YyDollar[5].token.Literal)}
+			toVal := &ast.IntegerLiteral{Token: YyDollar[7].token, Value: atoi(YyDollar[7].token.Literal)}
+			YyVAL.declarations = append(YyDollar[1].declarations, &ast.ArrayDeclaration{
+				Token: YyDollar[3].token,
+				Name:  &ast.Identifier{Token: YyDollar[3].token, Value: YyDollar[3].token.Literal},
+				From:  fromVal,
+				To:    toVal,
+			})
+		}
+	case 23:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:271
+		{
+			YyVAL.declarations = []ast.Declaration{
+				&ast.VarDeclaration{
+					Token: YyDollar[1].token,
+					Name:  &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal},
+				},
+			}
+		}
+	case 24:
+		YyDollar = YyS[Yypt-6 : Yypt+1]
+//line parser.y:280
+		{
+			fromVal := &ast.IntegerLiteral{Token: YyDollar[3].token, Value: atoi(YyDollar[3].token.Literal)}
+			toVal := &ast.IntegerLiteral{Token: YyDollar[5].token, Value: atoi(YyDollar[5].token.Literal)}
+			YyVAL.declarations = []ast.Declaration{
+				&ast.ArrayDeclaration{
+					Token: YyDollar[1].token,
+					Name:  &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal},
+					From:  fromVal,
+					To:    toVal,
+				},
+			}
+		}
+	case 25:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:296
+		{
+			arg := &ast.ArgDeclaration{
+				Token: YyDollar[3].token,
+				Name:  &ast.Identifier{Token: YyDollar[3].token, Value: YyDollar[3].token.Literal},
+				Type:  "",
+			}
+			YyVAL.arg_decls = append(YyDollar[1].arg_decls, arg)
+		}
+	case 26:
+		YyDollar = YyS[Yypt-4 : Yypt+1]
+//line parser.y:305
+		{
+			arg := &ast.ArgDeclaration{
+				Token: YyDollar[4].token,
+				Name:  &ast.Identifier{Token: YyDollar[4].token, Value: YyDollar[4].token.Literal},
+				Type:  "T",
+			}
+			YyVAL.arg_decls = append(YyDollar[1].arg_decls, arg)
+		}
+	case 27:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:314
+		{
+			YyVAL.arg_decls = []*ast.ArgDeclaration{
+				&ast.ArgDeclaration{
+					Token: YyDollar[1].token,
+					Name:  &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal},
+					Type:  "",
+				},
+			}
+		}
+	case 28:
+		YyDollar = YyS[Yypt-2 : Yypt+1]
+//line parser.y:324
+		{
+			YyVAL.arg_decls = []*ast.ArgDeclaration{
+				&ast.ArgDeclaration{
+					Token: YyDollar[2].token,
+					Name:  &ast.Identifier{Token: YyDollar[2].token, Value: YyDollar[2].token.Literal},
+					Type:  "T",
+				},
+			}
+		}
+	case 29:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:337
+		{
+			expr := &ast.Identifier{Token: YyDollar[3].token, Value: YyDollar[3].token.Literal}
+			YyVAL.args = append(YyDollar[1].args, expr)
+		}
+	case 30:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:342
+		{
+			YyVAL.args = []ast.Expression{
+				&ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal},
+			}
+		}
+	case 31:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:351
+		{
+			YyVAL.expression = YyDollar[1].value
+		}
+	case 32:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:355
+		{
+			YyVAL.expression = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "+",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 33:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:364
+		{
+			YyVAL.expression = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "-",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 34:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:373
+		{
+			YyVAL.expression = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "*",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 35:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:382
+		{
+			YyVAL.expression = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "/",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 36:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:391
+		{
+			YyVAL.expression = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "%",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 37:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:403
+		{
+			YyVAL.condition = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "==",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 38:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:412
+		{
+			YyVAL.condition = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "!=",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 39:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:421
+		{
+			YyVAL.condition = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: ">",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 40:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:430
+		{
+			YyVAL.condition = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "<",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 41:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:439
+		{
+			YyVAL.condition = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: ">=",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 42:
+		YyDollar = YyS[Yypt-3 : Yypt+1]
+//line parser.y:448
+		{
+			YyVAL.condition = &ast.BinaryExpression{
+				Token:    YyDollar[2].token,
+				Left:     YyDollar[1].value,
+				Operator: "<=",
+				Right:    YyDollar[3].value,
+			}
+		}
+	case 43:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:460
+		{
+			YyVAL.value = &ast.IntegerLiteral{
+				Token: YyDollar[1].token,
+				Value: atoi(YyDollar[1].token.Literal),
+			}
+		}
+	case 44:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:467
+		{
+			YyVAL.value = YyDollar[1].identifier
+		}
+	case 45:
+		YyDollar = YyS[Yypt-1 : Yypt+1]
+//line parser.y:474
+		{
+			YyVAL.identifier = &ast.Identifier{
+				Token: YyDollar[1].token,
+				Value: YyDollar[1].token.Literal,
+			}
+		}
+	case 46:
+		YyDollar = YyS[Yypt-4 : Yypt+1]
+//line parser.y:481
+		{
+			name := &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal}
+			index := &ast.Identifier{Token: YyDollar[3].token, Value: YyDollar[3].token.Literal}
+			YyVAL.identifier = &ast.ArrayAccess{
+				Token:     YyDollar[2].token,
+				ArrayName: name,
+				Index:     index,
+			}
+		}
+	case 47:
+		YyDollar = YyS[Yypt-4 : Yypt+1]
+//line parser.y:491
+		{
+			name := &ast.Identifier{Token: YyDollar[1].token, Value: YyDollar[1].token.Literal}
+			index := &ast.IntegerLiteral{Token: YyDollar[3].token, Value: atoi(YyDollar[3].token.Literal)}
+			YyVAL.identifier = &ast.ArrayAccess{
+				Token:     YyDollar[2].token,
+				ArrayName: name,
+				Index:     index,
+			}
+		}
 	}
 	goto Yystack /* stack new state and value */
 }

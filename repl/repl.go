@@ -53,66 +53,10 @@ func StartFile(filePath string, out io.Writer) {
 	lex := lexer.New(string(content))
 	p := parser.YyNewParser()
 
-	// Use a struct to capture the parse result (e.g., AST)
-	var ast interface{}
 	if p.Parse(lex) != 0 {
 		fmt.Fprintln(out, "Error: Invalid syntax")
 	} else {
 		// Assuming the parser can produce an AST or some structured output
-		ast = lex.GetAST()
 		fmt.Fprintln(out, "Parsed successfully")
-		VisualizeAST(ast, out)
 	}
-}
-
-type Node interface {
-	String() string
-	Children() []Node
-}
-
-func VisualizeAST(node interface{}, out io.Writer) {
-	if root, ok := node.(Node); ok {
-		printNode(root, "", true, out)
-	} else {
-		fmt.Fprintln(out, "No valid AST to visualize")
-	}
-}
-
-func printNode(node Node, prefix string, isTail bool, out io.Writer) {
-	if node == nil {
-		return
-	}
-
-	// Print current node
-	fmt.Fprintf(out, "%s%s%s\n", prefix, "└── ", node.String())
-
-	// Print children
-	children := node.Children()
-	for i, child := range children {
-		newPrefix := prefix
-		if isTail {
-			newPrefix += "    "
-		} else {
-			newPrefix += "│   "
-		}
-		printNode(child, newPrefix, i == len(children)-1, out)
-	}
-}
-
-type ASTNode struct {
-	Type     string
-	Value    string
-	Children []*ASTNode
-}
-
-func (n *ASTNode) String() string {
-	return fmt.Sprintf("%s: %s", n.Type, n.Value)
-}
-
-func (n *ASTNode) Children() []Node {
-	var nodes []Node
-	for _, child := range n.Children {
-		nodes = append(nodes, child)
-	}
-	return nodes
 }
