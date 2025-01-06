@@ -51,6 +51,18 @@ func (me *MathExpression) String() string {
 	return me.Left.String() + me.Operator.Literal + me.Right.String()
 }
 
+type Condition struct {
+	Left     Value
+	Operator token.Token
+	Right    Value
+}
+
+func (me *Condition) expressionNode()      {}
+func (me *Condition) TokenLiteral() string { return me.Operator.Literal }
+func (me *Condition) String() string {
+	return me.Left.String() + me.Operator.Literal + me.Right.String()
+}
+
 type Value interface {
 	Expression
 	valueNode()
@@ -64,7 +76,7 @@ type NumberLiteral struct {
 func (nl *NumberLiteral) expressionNode()      {}
 func (nl *NumberLiteral) valueNode()           {}
 func (nl *NumberLiteral) TokenLiteral() string { return nl.Token.Literal }
-func (nl *NumberLiteral) String() string       { return fmt.Sprintf("%d", nl.Value) }
+func (nl *NumberLiteral) String() string       { return fmt.Sprintf("%s", nl.Value) }
 
 type AssignCommand struct {
 	Identifier     Identifier  // Where will the expression be assigned to?
@@ -75,8 +87,50 @@ type AssignCommand struct {
 func (ac *AssignCommand) commandNode()         {}
 func (ac *AssignCommand) TokenLiteral() string { return ac.Token.Literal }
 func (ac *AssignCommand) String() string {
-	// x := a + 2
-	return ac.Identifier.String() + " := " + ac.MathExpression.String()
+	// Single-value expression
+	if ac.MathExpression.Right == nil {
+		return fmt.Sprintf("%s := %s; ",
+			ac.Identifier.String(),
+			ac.MathExpression.Left.String(),
+		)
+	}
+
+	// Otherwise, typical operator-based expression
+	return fmt.Sprintf("%s := %s %s %s; ",
+		ac.Identifier.String(),
+		ac.MathExpression.Left.String(),
+		ac.MathExpression.Operator.Literal,
+		ac.MathExpression.Right.String(),
+	)
+}
+
+type IfCommand struct {
+	Token        token.Token //IF
+	Condition    Condition
+	ThenCommands []Command
+	ElseCommands []Command
+}
+
+func (ic *IfCommand) commandNode()         {}
+func (ic *IfCommand) TokenLiteral() string { return ic.Token.Literal }
+func (ic *IfCommand) String() string {
+	result := "IF " + ic.Condition.String() + " THEN\n"
+
+	// Then commands
+	for _, command := range ic.ThenCommands {
+		result += "  " + command.String() + "\n"
+	}
+
+	// Else commands
+	if len(ic.ElseCommands) > 0 {
+		result += "ELSE\n"
+		for _, command := range ic.ElseCommands {
+			result += "  " + command.String() + "\n"
+		}
+	}
+
+	result += "ENDIF\n"
+	return result
 }
 
 type Identifier struct {
