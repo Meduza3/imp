@@ -27,14 +27,14 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LBRACKET, l.ch)
 	case ']':
 		tok = newToken(token.RBRACKET, l.ch)
-	// case ':':
-	// 	l.readChar()
-	// 	if l.ch == '=' {
-	// 		l.currentToken = &token.Token{Type: token.ASSIGN, Literal: ":="}
-	// 		l.readChar()
-	// 	} else {
-	// 		l.currentToken = newToken(token.COLON, ':')
-	// 	}
+	case ':':
+		peeked := l.peekChar()
+		if peeked == '=' {
+			l.readChar()
+			tok = token.Token{Type: token.ASSIGN, Literal: ":="}
+		} else {
+			tok = newToken(token.COLON, ':')
+		}
 	case '-':
 		tok = newToken(token.MINUS, l.ch)
 	case '*':
@@ -44,23 +44,23 @@ func (l *Lexer) NextToken() token.Token {
 	case '%':
 		tok = newToken(token.MODULO, l.ch)
 	case '=':
-		tok = newToken(token.EQUALS, l.ch)
-	// case '<':
-	// 	l.readChar()
-	// 	if l.ch == '=' {
-	// 		l.currentToken = &token.Token{Type: token.LEQ, Literal: "<="}
-	// 		l.readChar()
-	// 	} else {
-	// 		l.currentToken = newToken(token.LE, '<')
-	// 	}
-	// case '>':
-	// 	l.readChar()
-	// 	if l.ch == '=' {
-	// 		l.currentToken = &token.Token{Type: token.GEQ, Literal: ">="}
-	// 		l.readChar()
-	// 	} else {
-	// 		l.currentToken = newToken(token.GE, '>')
-	// 	}
+		tok = token.Token{Type: token.EQUALS, Literal: "="}
+	case '<':
+		peeked := l.peekChar()
+		if peeked == '=' {
+			l.readChar()
+			tok = token.Token{Type: token.LEQ, Literal: "<="}
+		} else {
+			tok = newToken(token.LE, l.ch)
+		}
+	case '>':
+		peeked := l.peekChar()
+		if peeked == '=' {
+			l.readChar()
+			tok = token.Token{Type: token.GEQ, Literal: ">="}
+		} else {
+			tok = newToken(token.GE, l.ch)
+		}
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case '#':
@@ -73,9 +73,22 @@ func (l *Lexer) NextToken() token.Token {
 		if isDigit(l.ch) {
 			literal := l.readNumber()
 			tok = token.Token{Type: token.NUM, Literal: literal}
+			return tok
 		} else if isLowercaseLetter(l.ch) {
 			literal := l.readPidentifier()
 			tok = token.Token{Type: token.PIDENTIFIER, Literal: literal}
+			return tok
+		} else if isUppercaseLetter(l.ch) {
+			literal := l.readKeyword()
+			tokenType, ok := token.LookupKeyword(literal)
+			if !ok {
+				tok = token.Token{Type: token.ILLEGAL, Literal: literal}
+				return tok
+			}
+			tok = token.Token{Type: tokenType, Literal: literal}
+			return tok
+		} else {
+			tok = newToken(token.ILLEGAL, l.ch)
 		}
 	}
 	l.readChar()
@@ -90,6 +103,14 @@ func New(input string) *Lexer {
 	l := &Lexer{input: input}
 	l.readChar()
 	return l
+}
+
+func (l *Lexer) peekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.readPosition]
+	}
 }
 
 func (l *Lexer) readChar() {
