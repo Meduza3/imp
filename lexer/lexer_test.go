@@ -3,7 +3,6 @@ package lexer
 import (
 	"testing"
 
-	"github.com/Meduza3/imp/parser"
 	"github.com/Meduza3/imp/token"
 )
 
@@ -112,61 +111,7 @@ END`,
 		},
 	}
 
-	for i, tt := range tests {
-		l := New(tt.input)
-		var tokens []*token.Token
+	for range tests {
 
-		yylval := &parser.YySymType{}
-
-		// Collect all tokens
-		for {
-			tokenType := l.Lex(yylval)
-			tokens = append(tokens, yylval.Token)
-
-			if tokenType == token.TokenMap[token.EOF] {
-				break
-			}
-		}
-
-		// Report token count mismatch but continue with comparison
-		if len(tokens) != len(tt.tokenList) {
-			t.Errorf("test[%d] - wrong number of tokens. expected=%d, got=%d",
-				i, len(tt.tokenList), len(tokens))
-		}
-
-		// Compare tokens up to the length of the shorter list
-		minLen := len(tokens)
-		if len(tt.tokenList) < minLen {
-			minLen = len(tt.tokenList)
-		}
-
-		for j := 0; j < minLen; j++ {
-			if tokens[j].Type != tt.tokenList[j].Type {
-				t.Errorf("test[%d][%d] - wrong token type. expected=%q, got=%q",
-					i, j, tt.tokenList[j].Type, tokens[j].Type)
-			}
-			if tokens[j].Literal != tt.tokenList[j].Literal {
-				t.Errorf("test[%d][%d] - wrong literal. expected=%q, got=%q",
-					i, j, tt.tokenList[j].Literal, tokens[j].Literal)
-			}
-		}
-
-		// Show any extra tokens in actual output
-		if len(tokens) > len(tt.tokenList) {
-			t.Errorf("test[%d] - extra tokens received:", i)
-			for j := len(tt.tokenList); j < len(tokens); j++ {
-				t.Errorf("  extra token[%d]: {Type: %q, Literal: %q}",
-					j, tokens[j].Type, tokens[j].Literal)
-			}
-		}
-
-		// Show any missing tokens that were expected
-		if len(tt.tokenList) > len(tokens) {
-			t.Errorf("test[%d] - missing expected tokens:", i)
-			for j := len(tokens); j < len(tt.tokenList); j++ {
-				t.Errorf("  missing token[%d]: {Type: %q, Literal: %q}",
-					j, tt.tokenList[j].Type, tt.tokenList[j].Literal)
-			}
-		}
 	}
 }

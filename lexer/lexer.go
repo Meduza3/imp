@@ -1,125 +1,98 @@
 package lexer
 
 import (
-	"github.com/Meduza3/imp/parser"
 	"github.com/Meduza3/imp/token"
 )
 
-type YyLex struct {
+type Lexer struct {
 	input        string
-	position     int
-	readPosition int
+	position     int //current position
+	readPosition int // position + 1
 	ch           byte
-	currentToken *token.Token
 }
 
-func (l *YyLex) Lex(yylval *parser.YySymType) int {
+func (l *Lexer) NextToken() token.Token {
 	l.skipWhitespace()
-
+	var tok token.Token
 	switch l.ch {
 	case '+':
-		l.currentToken = newToken(token.PLUS, l.ch)
-		l.readChar()
+		tok = newToken(token.PLUS, l.ch)
 	case '(':
-		l.currentToken = newToken(token.LPAREN, l.ch)
-		l.readChar()
+		tok = newToken(token.LPAREN, l.ch)
 	case ')':
-		l.currentToken = newToken(token.RPAREN, l.ch)
-		l.readChar()
+		tok = newToken(token.RPAREN, l.ch)
 	case ',':
-		l.currentToken = newToken(token.COMMA, l.ch)
-		l.readChar()
+		tok = newToken(token.COMMA, l.ch)
 	case '[':
-		l.currentToken = newToken(token.LBRACKET, l.ch)
-		l.readChar()
+		tok = newToken(token.LBRACKET, l.ch)
 	case ']':
-		l.currentToken = newToken(token.RBRACKET, l.ch)
-		l.readChar()
-	case ':':
-		l.readChar()
-		if l.ch == '=' {
-			l.currentToken = &token.Token{Type: token.ASSIGN, Literal: ":="}
-			l.readChar()
-		} else {
-			l.currentToken = newToken(token.COLON, ':')
-		}
+		tok = newToken(token.RBRACKET, l.ch)
+	// case ':':
+	// 	l.readChar()
+	// 	if l.ch == '=' {
+	// 		l.currentToken = &token.Token{Type: token.ASSIGN, Literal: ":="}
+	// 		l.readChar()
+	// 	} else {
+	// 		l.currentToken = newToken(token.COLON, ':')
+	// 	}
 	case '-':
-		l.currentToken = newToken(token.MINUS, l.ch)
-		l.readChar()
+		tok = newToken(token.MINUS, l.ch)
 	case '*':
-		l.currentToken = newToken(token.MULT, l.ch)
-		l.readChar()
+		tok = newToken(token.MULT, l.ch)
 	case '/':
-		l.currentToken = newToken(token.DIVIDE, l.ch)
-		l.readChar()
+		tok = newToken(token.DIVIDE, l.ch)
 	case '%':
-		l.currentToken = newToken(token.MODULO, l.ch)
-		l.readChar()
+		tok = newToken(token.MODULO, l.ch)
 	case '=':
-		l.currentToken = newToken(token.EQUALS, l.ch)
-		l.readChar()
-	case '<':
-		l.readChar()
-		if l.ch == '=' {
-			l.currentToken = &token.Token{Type: token.LEQ, Literal: "<="}
-			l.readChar()
-		} else {
-			l.currentToken = newToken(token.LE, '<')
-		}
-	case '>':
-		l.readChar()
-		if l.ch == '=' {
-			l.currentToken = &token.Token{Type: token.GEQ, Literal: ">="}
-			l.readChar()
-		} else {
-			l.currentToken = newToken(token.GE, '>')
-		}
+		tok = newToken(token.EQUALS, l.ch)
+	// case '<':
+	// 	l.readChar()
+	// 	if l.ch == '=' {
+	// 		l.currentToken = &token.Token{Type: token.LEQ, Literal: "<="}
+	// 		l.readChar()
+	// 	} else {
+	// 		l.currentToken = newToken(token.LE, '<')
+	// 	}
+	// case '>':
+	// 	l.readChar()
+	// 	if l.ch == '=' {
+	// 		l.currentToken = &token.Token{Type: token.GEQ, Literal: ">="}
+	// 		l.readChar()
+	// 	} else {
+	// 		l.currentToken = newToken(token.GE, '>')
+	// 	}
 	case ';':
-		l.currentToken = newToken(token.SEMICOLON, l.ch)
-		l.readChar()
+		tok = newToken(token.SEMICOLON, l.ch)
 	case '#':
-		l.currentToken = newToken(token.COMMENT, l.ch)
 		l.skipComment()
 	case 0:
 		literal := "<$EOF$>"
-		l.currentToken = &token.Token{Type: token.EOF, Literal: literal}
+		tok.Type = token.EOF
+		tok.Literal = literal
 	default:
 		if isDigit(l.ch) {
 			literal := l.readNumber()
-			l.currentToken = &token.Token{Type: token.NUM, Literal: literal}
+			tok = token.Token{Type: token.NUM, Literal: literal}
 		} else if isLowercaseLetter(l.ch) {
 			literal := l.readPidentifier()
-			l.currentToken = &token.Token{Type: token.PIDENTIFIER, Literal: literal}
-		} else if isUppercaseLetter(l.ch) {
-			literal := l.readKeyword()
-			kwToken, ok := token.LookupKeyword(literal)
-			if !ok {
-				l.currentToken = newToken(token.ILLEGAL, l.ch)
-				yylval.Token = l.currentToken
-				return token.TokenMap[l.currentToken.Type]
-			}
-			l.currentToken = &token.Token{Type: kwToken, Literal: literal}
-		} else {
-			l.currentToken = newToken(token.ILLEGAL, l.ch)
-			l.readChar()
+			tok = token.Token{Type: token.PIDENTIFIER, Literal: literal}
 		}
 	}
-
-	yylval.Token = l.currentToken
-	return token.TokenMap[l.currentToken.Type]
+	l.readChar()
+	return tok
 }
 
-func newToken(tokenType token.TokenType, ch byte) *token.Token {
-	return &token.Token{Type: tokenType, Literal: string(ch)}
+func newToken(tokenType token.TokenType, ch byte) token.Token {
+	return token.Token{Type: tokenType, Literal: string(ch)}
 }
 
-func New(input string) *YyLex {
-	l := &YyLex{input: input}
+func New(input string) *Lexer {
+	l := &Lexer{input: input}
 	l.readChar()
 	return l
 }
 
-func (l *YyLex) readChar() {
+func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
 		l.ch = 0
 	} else {
@@ -129,7 +102,7 @@ func (l *YyLex) readChar() {
 	l.readPosition += 1
 }
 
-func (l *YyLex) readNumber() string {
+func (l *Lexer) readNumber() string {
 	position := l.position
 	for isDigit(l.ch) {
 		l.readChar()
@@ -137,7 +110,7 @@ func (l *YyLex) readNumber() string {
 	return l.input[position:l.position]
 }
 
-func (l *YyLex) readPidentifier() string {
+func (l *Lexer) readPidentifier() string {
 	position := l.position
 	for isLowercaseLetter(l.ch) {
 		l.readChar()
@@ -145,7 +118,7 @@ func (l *YyLex) readPidentifier() string {
 	return l.input[position:l.position]
 }
 
-func (l *YyLex) readKeyword() string {
+func (l *Lexer) readKeyword() string {
 	position := l.position
 	for isUppercaseLetter(l.ch) {
 		l.readChar()
@@ -153,13 +126,13 @@ func (l *YyLex) readKeyword() string {
 	return l.input[position:l.position]
 }
 
-func (l *YyLex) skipWhitespace() {
+func (l *Lexer) skipWhitespace() {
 	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
 		l.readChar()
 	}
 }
 
-func (l *YyLex) skipComment() {
+func (l *Lexer) skipComment() {
 	for l.ch != '\n' && l.ch != 0 {
 		l.readChar()
 	}
@@ -178,6 +151,6 @@ func isUppercaseLetter(ch byte) bool {
 	return 'A' <= ch && ch <= 'Z'
 }
 
-func (l *YyLex) Error(s string) {
+func (l *Lexer) Error(s string) {
 	// Error handling implementation
 }

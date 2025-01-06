@@ -39,6 +39,7 @@ BEGIN
   z:=a;
 END
 
+# main
 PROGRAM IS
   m,n,x,y,nwd
 BEGIN
