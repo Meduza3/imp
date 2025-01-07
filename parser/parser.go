@@ -48,7 +48,18 @@ func (p *Parser) ParseProgram() *ast.Program {
 	//Currently the program is a list of commands
 	program := &ast.Program{}
 	program.Commands = []ast.Command{}
-	for p.curToken.Type != token.EOF { // Iterate over the tokens until token.EOF
+	if !p.curTokenIs(token.PROGRAM) {
+		//Can't parse program, not found the start
+	}
+	p.nextToken() // curToken = IS
+	if !p.curTokenIs(token.IS) {
+		//Can't parse program, not found the is
+	}
+	p.nextToken() // curToken = BEGIN
+	if !p.curTokenIs(token.BEGIN) {
+		//Can't parse program, not found BEGIN
+	}
+	for p.curToken.Type != token.END { // Iterate over the tokens until token.END
 		command, err := p.parseCommand() // This uses the current token to figure out which command it is
 		if err != nil {
 			p.errors = append(p.errors, fmt.Sprintf("Failed to parseCommand: %v", err))
@@ -56,7 +67,6 @@ func (p *Parser) ParseProgram() *ast.Program {
 			continue
 		}
 		program.Commands = append(program.Commands, command)
-		p.nextToken() // Get to the next token at the end of the core loop
 	}
 	return program
 }
@@ -68,6 +78,9 @@ func (p *Parser) parseCommand() (ast.Command, error) {
 
 	switch p.curToken.Type {
 	case token.PIDENTIFIER:
+		if p.peekTokenIs(token.LBRACKET) {
+			return p.parseProcCallCommand()
+		}
 		return p.parseAssignCommand() // or function call!
 	case token.IF:
 		return p.parseIfCommand()
@@ -84,6 +97,10 @@ func (p *Parser) parseCommand() (ast.Command, error) {
 	default:
 		return nil, fmt.Errorf("failed to parseCommand, no matching command for token: %v", p.curToken.Type)
 	}
+}
+
+func (p *Parser) parseProcCallCommand() (ast.Command, error) {
+	panic("unimplemented")
 }
 
 func (p *Parser) parseWhileCommand() (ast.Command, error) {
@@ -165,7 +182,7 @@ func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
 	}
 	ifCmd.Condition = *condition
 	if !p.curTokenIs(token.THEN) {
-		return nil, fmt.Errorf("parseIfCommand: expected THEN, got %s", p.curToken)
+		return nil, fmt.Errorf("parseIfCommand: expected THEN, got %v", p.curToken)
 	}
 	p.nextToken()                                                       // skip THEN
 	ifCmd.ThenCommands = *p.parseCommandsUntil(token.ELSE, token.ENDIF) // Eat commands
@@ -174,7 +191,7 @@ func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
 		ifCmd.ElseCommands = *p.parseCommandsUntil(token.ENDIF) // Eat commands
 	}
 	if !p.curTokenIs(token.ENDIF) {
-		return nil, fmt.Errorf("parseIfCommand: expected ENDIF, got %s", p.curToken)
+		return nil, fmt.Errorf("parseIfCommand: expected ENDIF, got %v", p.curToken)
 	}
 	p.nextToken() // Eat "ENDIF"
 	return &ifCmd, nil

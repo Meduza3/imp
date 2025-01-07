@@ -26,17 +26,37 @@ type Expression interface {
 
 // Holds the entire file
 type Program struct {
-	Commands []Command // List of commands
+	Declarations []Declaration
+	Commands     []Command // List of commands
 }
 
 func (p *Program) String() string {
 	var string string
-	for _, comm := range p.Commands {
-		if comm != nil {
-			string += comm.String()
-		}
+	string += "PROGRAM IS \n"
+	for _, decl := range p.Declarations {
+		string += decl.String()
 	}
+	string += "\nBEGIN\n"
+	for _, comm := range p.Commands {
+		string += comm.String()
+	}
+	string += "\nEND"
 	return string
+}
+
+type Declaration struct {
+	IsTable     bool
+	Pidentifier Pidentifier
+	From        int
+	To          int
+}
+
+func (d *Declaration) String() string {
+	if d.IsTable {
+		return fmt.Sprintf("%s[%d:%d]", d.Pidentifier.String(), d.From, d.To)
+	} else {
+		return d.Pidentifier.String()
+	}
 }
 
 // represtents "expression" in BNF
