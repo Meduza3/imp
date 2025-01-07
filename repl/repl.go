@@ -26,6 +26,7 @@ func Start(in io.Reader, out io.Writer) {
 		p := parser.New(lexer)
 		program := p.ParseProgram()
 		io.WriteString(out, program.String())
+		io.WriteString(out, fmt.Sprintf("%#+v", program))
 		io.WriteString(out, "\n")
 	}
 }

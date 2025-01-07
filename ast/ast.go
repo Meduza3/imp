@@ -24,8 +24,9 @@ type Expression interface {
 	expressionNode()
 }
 
+// Holds the entire file
 type Program struct {
-	Commands []Command
+	Commands []Command // List of commands
 }
 
 func (p *Program) String() string {
