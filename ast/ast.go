@@ -105,6 +105,52 @@ func (ac *AssignCommand) String() string {
 	)
 }
 
+type WhileCommand struct {
+	Token     token.Token //WHILE
+	Condition Condition
+	Commands  []Command
+}
+
+type RepeatCommand struct {
+	Token     token.Token //REPEAT
+	Commands  []Command
+	Condition Condition
+}
+
+type ForCommand struct {
+	Token    token.Token // FOR
+	Iterator Pidentifier
+	IsDownTo bool // 0: To, 1: Downto
+	From     Value
+	To       Value
+	Commands []Command
+}
+
+type ReadCommand struct {
+	Token      token.Token //READ
+	Identifier Identifier
+}
+
+func (rc *ReadCommand) commandNode()         {}
+func (rc *ReadCommand) TokenLiteral() string { return rc.Token.Literal }
+func (rc *ReadCommand) String() string {
+	return "WRITE " + rc.Identifier.String()
+}
+
+type WriteCommand struct {
+	Token token.Token //WRITE
+	Value Value
+}
+
+func (wc *WriteCommand) commandNode()         {}
+func (wc *WriteCommand) TokenLiteral() string { return wc.Token.Literal }
+func (wc *WriteCommand) String() string {
+	if wc.Value != nil {
+		return fmt.Sprintf("WRITE %v", wc.Value)
+	}
+	return "WRITE "
+}
+
 type IfCommand struct {
 	Token        token.Token //IF
 	Condition    Condition
