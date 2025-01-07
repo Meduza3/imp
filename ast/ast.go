@@ -58,10 +58,10 @@ type Condition struct {
 	Right    Value
 }
 
-func (me *Condition) expressionNode()      {}
-func (me *Condition) TokenLiteral() string { return me.Operator.Literal }
-func (me *Condition) String() string {
-	return me.Left.String() + me.Operator.Literal + me.Right.String()
+func (c *Condition) expressionNode()      {}
+func (c *Condition) TokenLiteral() string { return c.Operator.Literal }
+func (c *Condition) String() string {
+	return c.Left.String() + c.Operator.Literal + c.Right.String()
 }
 
 type Value interface {

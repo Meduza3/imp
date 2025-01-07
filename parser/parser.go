@@ -246,13 +246,6 @@ func (p *Parser) parseCondition() (*ast.Condition, error) {
 	if err != nil {
 		return nil, fmt.Errorf("in parseCondition: failed to parse left value: %v", err) // Error handling - failed to parse left-hand value
 	}
-	if !isConditionOperator(p.peekToken.Type) {
-		return &ast.Condition{
-			Left:     left,
-			Operator: token.Token{Type: token.ILLEGAL, Literal: ""},
-			Right:    nil, // no right operand
-		}, nil
-	}
 	p.nextToken()
 	operator := p.curToken
 	p.nextToken()
