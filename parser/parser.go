@@ -108,19 +108,24 @@ func (p *Parser) parseAssignCommand() (*ast.AssignCommand, error) {
 
 func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
 	fmt.Printf("in parseIfCommand: %v\n", p.curToken)
-	var ifCmd ast.IfCommand
-	ifCmd.Token = p.curToken
+	ifCmd := ast.IfCommand{Token: p.curToken}
 	p.nextToken()                        // Eat "IF"
 	condition, err := p.parseCondition() // Eat conditon
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse condition: %v", err)
 	}
 	ifCmd.Condition = *condition
-	p.nextToken()                           // Eat "THEN"
+	if !p.curTokenIs(token.THEN) {
+		return nil, fmt.Errorf("parseIfCommand: expected THEN, got %s", p.curToken)
+	}
+	p.nextToken()                           // skip THEN
 	ifCmd.ThenCommands = *p.parseCommands() // Eat commands
 	if p.peekToken.Type == token.ELSE {
 		p.nextToken()                           // Eat "ELSE"
 		ifCmd.ElseCommands = *p.parseCommands() // Eat commands
+	}
+	if !p.curTokenIs(token.ENDIF) {
+		return nil, fmt.Errorf("parseIfCommand: expected ENDIF, got %s", p.curToken)
 	}
 	p.nextToken() // Eat "ENDIF"
 	return &ifCmd, nil
@@ -245,6 +250,9 @@ func (p *Parser) parseCondition() (*ast.Condition, error) {
 	left, err := p.parseValue()
 	if err != nil {
 		return nil, fmt.Errorf("in parseCondition: failed to parse left value: %v", err) // Error handling - failed to parse left-hand value
+	}
+	if !isConditionOperator(p.peekToken.Type) {
+		return nil, fmt.Errorf("parseCondition: expected a comparison operator, got %s", p.peekToken.Type)
 	}
 	p.nextToken()
 	operator := p.curToken
