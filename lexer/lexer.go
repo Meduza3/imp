@@ -66,6 +66,7 @@ func (l *Lexer) NextToken() token.Token {
 		tok = l.newToken(token.SEMICOLON, l.ch)
 	case '#':
 		l.skipComment()
+		return l.NextToken()
 	case 0:
 		literal := "<$EOF$>"
 		tok.Type = token.EOF
