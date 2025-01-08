@@ -2,6 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/token"
@@ -50,32 +52,37 @@ func (p *Parser) nextToken() {
 // Parse program is the first function that is being called when you start to parse the program
 func (p *Parser) ParseProgram() *ast.Program {
 	fmt.Printf("in ParseProgram: %v\n", p.curToken)
-	//Currently the program is a list of commands
-	program := &ast.Program{}
-	program.Commands = []ast.Command{}
-	if !p.curTokenIs(token.PROGRAM) {
-		//Can't parse program, not found the start
+	//Currently the main is a list of commands
+	token := token.Token{Literal: "PROGRAM_ALL", Type: token.PROGRAM_ALL}
+	procedures := p.parseProcedures()
+	//time.Sleep(10 * time.Second)
+	main, err := p.parseMain()
+	if err != nil {
+		log.Fatalf("failed to parse main: %v", err)
 	}
+	program := &ast.Program{token, *procedures, *main}
+	return program
+}
+
+func (p *Parser) parseMain() (*ast.Main, error) {
+	main := ast.Main{}
+	if !p.curTokenIs(token.PROGRAM) {
+		return nil, fmt.Errorf("line %d: expected PROGRAM got %s", p.curToken.Line, p.curToken.Type)
+	}
+	main.Token = p.curToken
 	p.nextToken() // curToken = IS
 	if !p.curTokenIs(token.IS) {
-		//Can't parse program, not found the is
+		return nil, fmt.Errorf("line %d: expected IS got %s", p.curToken.Line, p.curToken.Type)
 	}
 	p.nextToken() // curToken = BEGIN
 	if !p.curTokenIs(token.BEGIN) {
 		decl := p.parseDeclarations()
-		program.Declarations = *decl
+		main.Declarations = *decl
 	}
-	p.nextToken()                      // eat 'BEGIN'
-	for p.curToken.Type != token.END { // Iterate over the tokens until token.END
-		command, err := p.parseCommand() // This uses the current token to figure out which command it is
-		if err != nil {
-			p.errors = append(p.errors, fmt.Sprintf("Failed to parseCommand: %v", err))
-			p.nextToken()
-			continue
-		}
-		program.Commands = append(program.Commands, command)
-	}
-	return program
+	p.nextToken() // eat 'BEGIN'
+	commands := p.parseCommandsUntil(token.END)
+	main.Commands = *commands
+	return &main, nil
 }
 
 func (p *Parser) parsePidentifier() ast.Pidentifier {
@@ -110,6 +117,7 @@ func (p *Parser) parseDeclarations() *[]ast.Declaration {
 			decl = append(decl, ast.Declaration{IsTable: true, Pidentifier: pid, From: from, To: to})
 		}
 		p.nextToken() // eat the ','
+		time.Sleep(300 * time.Millisecond)
 	}
 	return &decl
 }
@@ -213,7 +221,7 @@ func (p *Parser) parseRepeatCommand() (*ast.RepeatCommand, error) {
 	repComm := &ast.RepeatCommand{}
 	repToken := p.curToken
 	p.nextToken()
-	commands := p.parseCommandsUntil("UNTIL")
+	commands := p.parseCommandsUntil(token.UNTIL)
 	p.nextToken()
 	condition, err := p.parseCondition()
 	if err != nil {
@@ -373,6 +381,107 @@ func (p *Parser) parseCommands() *[]ast.Command {
 	return &commands
 }
 
+func (p *Parser) parseProcedures() *[]ast.Procedure {
+	procedures := []ast.Procedure{}
+	// parse commands until we hit one of the stopTokens (ELSE, ENDIF) or EOF
+	for p.curToken.Type != token.PROGRAM {
+		procedure, err := p.parseProcedure()
+		if err != nil {
+			p.errors = append(p.errors, fmt.Sprintf("failed to parse procedure: %v", err))
+			continue
+		}
+		procedures = append(procedures, *procedure)
+	}
+	return &procedures
+}
+
+func (p *Parser) parseProcedure() (*ast.Procedure, error) {
+	proc := ast.Procedure{}
+	if !p.curTokenIs(token.PROCEDURE) {
+		return nil, fmt.Errorf("line %d: expected PROCEDURE got %s", p.curToken.Line, p.curToken.Type)
+	}
+	proc.Token = p.curToken
+	p.nextToken()
+	procHead, err := p.parseProcHead()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse prochead: %v", err)
+	}
+	if !p.curTokenIs(token.IS) {
+		return nil, fmt.Errorf("line %d: expected IS got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	if !p.curTokenIs(token.BEGIN) {
+		declarations := p.parseDeclarations()
+		proc.Declarations = *declarations
+	}
+	p.nextToken() // eat 'BEGIN'
+	commands := p.parseCommandsUntil(token.END)
+	p.nextToken()
+	proc.Commands = *commands
+	proc.ProcHead = *procHead
+	return &proc, nil
+}
+
+func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
+	procHead := ast.ProcHead{}
+	procHead.Token = p.curToken
+	name := p.parsePidentifier()
+	if !p.curTokenIs(token.LPAREN) {
+		return nil, fmt.Errorf("line %d expected '(' got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	argsDecl, err := p.parseArgsDecl()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse args: %s", err)
+	}
+	if !p.curTokenIs(token.RPAREN) {
+		return nil, fmt.Errorf("line %d expected ')' got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	procHead.ArgsDecl = *argsDecl
+	procHead.Name = name
+	return &procHead, nil
+}
+
+func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
+	args := []ast.ArgDecl{}
+
+	if !p.curTokenIs(token.PIDENTIFIER) {
+		return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
+	}
+
+	arg, err := p.parseArgDecl()
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing argsdecl: %v", err)
+	}
+	args = append(args, *arg)
+	for p.curTokenIs(token.COMMA) {
+		p.nextToken() // eat ','
+		if !p.curTokenIs(token.PIDENTIFIER) {
+			return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
+		}
+		arg, err := p.parseArgDecl()
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing argsdecl: %v", err)
+		}
+		args = append(args, *arg)
+	}
+	return &args, nil
+}
+
+func (p *Parser) parseArgDecl() (*ast.ArgDecl, error) {
+	var arg ast.ArgDecl
+	if p.curTokenIs(token.T) {
+		arg.IsTable = true
+		p.nextToken()
+	}
+	name := p.parsePidentifier()
+	arg.Name = name
+	arg.Token = p.curToken
+	p.nextToken()
+	return &arg, nil
+}
+
 func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Command {
 	commands := []ast.Command{}
 	// parse commands until we hit one of the stopTokens (ELSE, ENDIF) or EOF
@@ -383,6 +492,7 @@ func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Comman
 			// maybe break or continue
 		}
 		commands = append(commands, command)
+		time.Sleep(300 * time.Millisecond)
 	}
 	return &commands
 }

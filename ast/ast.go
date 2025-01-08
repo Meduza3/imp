@@ -24,20 +24,98 @@ type Expression interface {
 	expressionNode()
 }
 
-// Holds the entire file
 type Program struct {
+	Token      token.Token
+	Procedures []Procedure
+	Main       Main
+}
+
+func (p *Program) TokenLiteral() string { return p.Token.Literal }
+func (p *Program) String() string {
+	var string string
+	for _, proc := range p.Procedures {
+		string += proc.String()
+	}
+	string += p.Main.String()
+	return string
+}
+
+type Procedure struct {
+	Token        token.Token // PROCEDURE
+	ProcHead     ProcHead
+	Declarations []Declaration
+	Commands     []Command
+}
+
+func (p *Procedure) TokenLiteral() string { return p.Token.Literal }
+func (p *Procedure) String() string {
+	var string string
+	string += "PROCEDURE "
+	string += p.ProcHead.String()
+	string += " IS "
+	for _, decl := range p.Declarations {
+		string += decl.String()
+	}
+	string += " BEGIN "
+	for _, comm := range p.Commands {
+		string += comm.String()
+	}
+	string += " END"
+	return string
+}
+
+type ProcHead struct {
+	Token    token.Token
+	Name     Pidentifier
+	ArgsDecl []ArgDecl
+}
+
+func (ph *ProcHead) TokenLiteral() string { return ph.Token.Literal }
+func (ph *ProcHead) String() string {
+	var string string
+	string += ph.Name.String()
+	string += "("
+	for i, arg := range ph.ArgsDecl {
+		if i > 0 {
+			string += ", "
+		}
+		string += arg.String()
+	}
+	string += ")"
+	return string
+}
+
+type ArgDecl struct {
+	Token   token.Token
+	IsTable bool
+	Name    Pidentifier
+}
+
+func (ad *ArgDecl) TokenLiteral() string { return ad.Token.Literal }
+func (ad *ArgDecl) String() string {
+	if ad.IsTable {
+		return "T " + ad.Name.String()
+	} else {
+		return ad.Name.String()
+	}
+}
+
+// Holds the Main
+type Main struct {
+	Token        token.Token
 	Declarations []Declaration
 	Commands     []Command // List of commands
 }
 
-func (p *Program) String() string {
+func (m *Main) TokenLiteral() string { return m.Token.Literal }
+func (m *Main) String() string {
 	var string string
 	string += "PROGRAM IS \n"
-	for _, decl := range p.Declarations {
+	for _, decl := range m.Declarations {
 		string += decl.String()
 	}
 	string += "\nBEGIN\n"
-	for _, comm := range p.Commands {
+	for _, comm := range m.Commands {
 		string += comm.String()
 	}
 	string += "\nEND"

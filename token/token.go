@@ -9,8 +9,9 @@ type Token struct {
 }
 
 const (
-	ILLEGAL = "ILLEGAL"
-	EOF     = "EOF"
+	PROGRAM_ALL = "PROGRAM_ALL"
+	ILLEGAL     = "ILLEGAL"
+	EOF         = "EOF"
 
 	PROCEDURE = "PROCEDURE"
 	IS        = "IS"
