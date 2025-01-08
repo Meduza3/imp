@@ -3,7 +3,6 @@ package parser
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/token"
@@ -123,7 +122,7 @@ func (p *Parser) parseDeclarations() *[]ast.Declaration {
 			// No comma means we've reached the end of declarations
 			break
 		}
-		time.Sleep(300 * time.Millisecond)
+		// time.Sleep(300 * time.Millisecond)
 	}
 	return &decl
 }
@@ -499,7 +498,7 @@ func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Comman
 			// maybe break or continue
 		}
 		commands = append(commands, command)
-		time.Sleep(300 * time.Millisecond)
+		// time.Sleep(300 * time.Millisecond)
 	}
 	return &commands
 }
