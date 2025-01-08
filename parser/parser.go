@@ -85,6 +85,7 @@ func (p *Parser) parseMain() (*ast.Main, error) {
 }
 
 func (p *Parser) parsePidentifier() ast.Pidentifier {
+	fmt.Printf("in parsePidentifier\n")
 	pid := ast.Pidentifier{
 		Value: p.curToken.Literal,
 		Token: p.curToken,
@@ -173,6 +174,7 @@ func (p *Parser) parseProcCallCommand() (*ast.ProcCallCommand, error) {
 	if !p.curTokenIs(token.SEMICOLON) {
 		return nil, fmt.Errorf("line %d expected ';' got %s", p.curToken.Line, p.curToken.Type)
 	}
+	p.nextToken()
 	return &ast.ProcCallCommand{
 		Token: procCallToken,
 		Name:  name,
@@ -216,6 +218,10 @@ func (p *Parser) parseWhileCommand() (*ast.WhileCommand, error) {
 	}
 	p.nextToken()
 	commands := p.parseCommandsUntil(token.ENDWHILE)
+	if !p.curTokenIs(token.ENDWHILE) {
+		return nil, fmt.Errorf("failed to parse while command, expected ENDWHILE got %v", p.curToken.Type)
+	}
+	p.nextToken() // Consume 'ENDWHILE'
 	whileComm.Token = whileToken
 	whileComm.Condition = *condition
 	whileComm.Commands = *commands
@@ -428,6 +434,7 @@ func (p *Parser) parseProcedure() (*ast.Procedure, error) {
 }
 
 func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
+	fmt.Printf("in parseProcHead\n")
 	procHead := ast.ProcHead{}
 	procHead.Token = p.curToken
 	name := p.parsePidentifier()
@@ -450,9 +457,9 @@ func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
 
 func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
 	args := []ast.ArgDecl{}
-
-	if !p.curTokenIs(token.PIDENTIFIER) {
-		return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
+	fmt.Printf("in parseArgsDecl. token=%v\n", p.curToken)
+	if !p.curTokenIs(token.PIDENTIFIER) && !p.curTokenIs(token.T) {
+		return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier or T in args, got %s", p.curToken.Line, p.curToken.Type)
 	}
 
 	arg, err := p.parseArgDecl()
@@ -483,7 +490,6 @@ func (p *Parser) parseArgDecl() (*ast.ArgDecl, error) {
 	name := p.parsePidentifier()
 	arg.Name = name
 	arg.Token = p.curToken
-	p.nextToken()
 	return &arg, nil
 }
 
