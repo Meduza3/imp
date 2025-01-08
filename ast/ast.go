@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Meduza3/imp/token"
 )
@@ -54,7 +55,7 @@ func (p *Procedure) String() string {
 	string += p.ProcHead.String()
 	string += " IS "
 	for _, decl := range p.Declarations {
-		string += decl.String()
+		string += decl.String() + ", "
 	}
 	string += " BEGIN "
 	for _, comm := range p.Commands {
@@ -109,17 +110,30 @@ type Main struct {
 
 func (m *Main) TokenLiteral() string { return m.Token.Literal }
 func (m *Main) String() string {
-	var string string
-	string += "PROGRAM IS \n"
+	var s strings.Builder
+
+	// Append the program header
+	s.WriteString("PROGRAM IS\n")
+
+	// Collect all declaration strings
+	declStrings := make([]string, 0, len(m.Declarations))
 	for _, decl := range m.Declarations {
-		string += decl.String()
+		declStrings = append(declStrings, decl.String())
 	}
-	string += "\nBEGIN\n"
+
+	// Join declarations with ", " and append
+	s.WriteString(strings.Join(declStrings, ", "))
+	s.WriteString("\nBEGIN\n")
+
+	// Append all command strings
 	for _, comm := range m.Commands {
-		string += comm.String()
+		s.WriteString(comm.String())
 	}
-	string += "\nEND"
-	return string
+
+	// Append the program footer
+	s.WriteString("\nEND")
+
+	return s.String()
 }
 
 type Declaration struct {
@@ -305,7 +319,7 @@ type ReadCommand struct {
 func (rc *ReadCommand) commandNode()         {}
 func (rc *ReadCommand) TokenLiteral() string { return rc.Token.Literal }
 func (rc *ReadCommand) String() string {
-	return "WRITE " + rc.Identifier.String()
+	return "WRITE " + rc.Identifier.String() + ";"
 }
 
 type WriteCommand struct {
