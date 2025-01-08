@@ -116,7 +116,13 @@ func (p *Parser) parseDeclarations() *[]ast.Declaration {
 			p.nextToken() // ] = curtoken
 			decl = append(decl, ast.Declaration{IsTable: true, Pidentifier: pid, From: from, To: to})
 		}
-		p.nextToken() // eat the ','
+		// Check if the next token is a comma before consuming it
+		if p.curTokenIs(token.COMMA) {
+			p.nextToken() // consume the comma
+		} else {
+			// No comma means we've reached the end of declarations
+			break
+		}
 		time.Sleep(300 * time.Millisecond)
 	}
 	return &decl
@@ -486,6 +492,7 @@ func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Comman
 	commands := []ast.Command{}
 	// parse commands until we hit one of the stopTokens (ELSE, ENDIF) or EOF
 	for !p.inSet(p.curToken.Type, stopTokens) && p.curToken.Type != token.EOF {
+		fmt.Printf("parsing until: %v\n", stopTokens)
 		command, err := p.parseCommand()
 		if err != nil {
 			p.errors = append(p.errors, fmt.Sprintf("failed to parse command: %v", err))
