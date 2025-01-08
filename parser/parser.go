@@ -18,6 +18,11 @@ type Parser struct {
 	peekToken token.Token
 }
 
+func (p *Parser) addError(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	p.errors = append(p.errors, msg)
+}
+
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{l: l, errors: []string{}}
 	p.nextToken()
@@ -57,8 +62,10 @@ func (p *Parser) ParseProgram() *ast.Program {
 	}
 	p.nextToken() // curToken = BEGIN
 	if !p.curTokenIs(token.BEGIN) {
-		//Can't parse program, not found BEGIN
+		decl := p.parseDeclarations()
+		program.Declarations = *decl
 	}
+	p.nextToken()                      // eat 'BEGIN'
 	for p.curToken.Type != token.END { // Iterate over the tokens until token.END
 		command, err := p.parseCommand() // This uses the current token to figure out which command it is
 		if err != nil {
@@ -71,6 +78,42 @@ func (p *Parser) ParseProgram() *ast.Program {
 	return program
 }
 
+func (p *Parser) parsePidentifier() ast.Pidentifier {
+	pid := ast.Pidentifier{
+		Value: p.curToken.Literal,
+		Token: p.curToken,
+	}
+	p.nextToken()
+	return pid
+}
+
+func (p *Parser) parseDeclarations() *[]ast.Declaration {
+	var decl = []ast.Declaration{}
+	for !p.curTokenIs(token.BEGIN) {
+		if !p.peekTokenIs(token.LBRACKET) {
+			pid := p.parsePidentifier()
+			decl = append(decl, ast.Declaration{IsTable: false, Pidentifier: pid})
+		} else {
+			pid := p.parsePidentifier() // [ = curToken
+			p.nextToken()               // num = curToken
+			from := ast.NumberLiteral{
+				Token: p.curToken,
+				Value: p.curToken.Literal,
+			}
+			p.nextToken() // : = curToken
+			p.nextToken() // num = curtoken
+			to := ast.NumberLiteral{
+				Token: p.curToken,
+				Value: p.curToken.Literal,
+			}
+			p.nextToken() // ] = curtoken
+			decl = append(decl, ast.Declaration{IsTable: true, Pidentifier: pid, From: from, To: to})
+		}
+		p.nextToken() // eat the ','
+	}
+	return &decl
+}
+
 // Uses the current token to identify which command it is
 // Should return NIL when it failed to parse the command
 func (p *Parser) parseCommand() (ast.Command, error) {
@@ -78,7 +121,7 @@ func (p *Parser) parseCommand() (ast.Command, error) {
 
 	switch p.curToken.Type {
 	case token.PIDENTIFIER:
-		if p.peekTokenIs(token.LBRACKET) {
+		if p.peekTokenIs(token.LPAREN) {
 			return p.parseProcCallCommand()
 		}
 		return p.parseAssignCommand() // or function call!
@@ -99,20 +142,129 @@ func (p *Parser) parseCommand() (ast.Command, error) {
 	}
 }
 
-func (p *Parser) parseProcCallCommand() (ast.Command, error) {
-	panic("unimplemented")
+func (p *Parser) parseProcCallCommand() (*ast.ProcCallCommand, error) {
+	procCallToken := p.curToken
+	name := p.parsePidentifier()
+	if !p.curTokenIs(token.LPAREN) {
+		return nil, fmt.Errorf("line %d expected '(' got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	args, err := p.parseArgs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse arguments in proccall: %v", err)
+	}
+	if !p.curTokenIs(token.RPAREN) {
+		return nil, fmt.Errorf("line %d expected ')' got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	if !p.curTokenIs(token.SEMICOLON) {
+		return nil, fmt.Errorf("line %d expected ';' got %s", p.curToken.Line, p.curToken.Type)
+	}
+	return &ast.ProcCallCommand{
+		Token: procCallToken,
+		Name:  name,
+		Args:  *args,
+	}, nil
 }
 
-func (p *Parser) parseWhileCommand() (ast.Command, error) {
-	panic("unimplemented")
+func (p *Parser) parseArgs() (*[]ast.Pidentifier, error) {
+	args := []ast.Pidentifier{}
+
+	if !p.curTokenIs(token.PIDENTIFIER) {
+		return nil, fmt.Errorf("failed parsing proccall line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
+	}
+
+	pid := p.parsePidentifier()
+	args = append(args, pid)
+
+	for p.curTokenIs(token.COMMA) {
+		p.nextToken() // eat ','
+		if !p.curTokenIs(token.PIDENTIFIER) {
+			return nil, fmt.Errorf("failed parsing proccall line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
+		}
+
+		pid = p.parsePidentifier()
+		args = append(args, pid)
+	}
+
+	return &args, nil
 }
 
-func (p *Parser) parseRepeatCommand() (ast.Command, error) {
-	panic("unimplemented")
+func (p *Parser) parseWhileCommand() (*ast.WhileCommand, error) {
+	whileComm := &ast.WhileCommand{}
+	whileToken := p.curToken
+	p.nextToken()
+	condition, err := p.parseCondition()
+	if err != nil {
+		fmt.Printf("failed to parse condition: %v", err)
+	}
+	if !p.curTokenIs(token.DO) {
+		return nil, fmt.Errorf("failed to parse while command, expected DO got %v", p.curToken.Type)
+	}
+	p.nextToken()
+	commands := p.parseCommandsUntil(token.ENDWHILE)
+	whileComm.Token = whileToken
+	whileComm.Condition = *condition
+	whileComm.Commands = *commands
+	return whileComm, nil
 }
 
-func (p *Parser) parseForCommand() (ast.Command, error) {
-	panic("unimplemented")
+func (p *Parser) parseRepeatCommand() (*ast.RepeatCommand, error) {
+	repComm := &ast.RepeatCommand{}
+	repToken := p.curToken
+	p.nextToken()
+	commands := p.parseCommandsUntil("UNTIL")
+	p.nextToken()
+	condition, err := p.parseCondition()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse condition: %v", err)
+	}
+	if !p.curTokenIs(token.SEMICOLON) {
+		return nil, fmt.Errorf("failed to parse for line %d: expected ';' got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	repComm.Token = repToken
+	repComm.Commands = *commands
+	repComm.Condition = *condition
+	return repComm, nil
+}
+
+func (p *Parser) parseForCommand() (*ast.ForCommand, error) {
+	forComm := &ast.ForCommand{}
+	forToken := p.curToken
+	p.nextToken()
+	pid := p.parsePidentifier()
+	if !p.expectPeek(token.FROM) {
+		return nil, fmt.Errorf("failed to parse for line %d: expected FROM got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	valFrom, err := p.parseValue()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse for: failed to parse value at line %d: %v", p.curToken.Line, err)
+	}
+	if p.curToken.Type == token.TO {
+		forComm.IsDownTo = false
+	} else if p.curToken.Type == token.FROM {
+		forComm.IsDownTo = true
+	} else {
+		return nil, fmt.Errorf("failed to parse for line %d: expected DOWNTO or TO got %s", p.curToken.Line, p.curToken.Type)
+	}
+	p.nextToken()
+	valTo, err := p.parseValue()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse for: failed to parse value at line %d: %v", p.curToken.Line, err)
+	}
+	if !p.expectPeek(token.DO) {
+		return nil, fmt.Errorf("failed to parse for line %d: expected DO got %s", p.curToken.Line, p.curToken.Type)
+	}
+	commands := p.parseCommandsUntil(token.ENDFOR)
+	p.nextToken()
+	forComm.Token = forToken
+	forComm.Iterator = pid
+	forComm.From = valFrom
+	forComm.To = valTo
+	forComm.Commands = *commands
+	return forComm, nil
 }
 
 func (p *Parser) parseReadCommand() (*ast.ReadCommand, error) {
@@ -150,24 +302,34 @@ func (p *Parser) parseAssignCommand() (*ast.AssignCommand, error) {
 
 	identifier, err := p.parseIdentifier()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse assign command: %v", err) // Error handling - failed to parse identifier
+		p.addError("failed to parse assign command: %v", err)
+		return nil, err
 	}
+
 	if !p.curTokenIs(token.ASSIGN) {
-		return nil, fmt.Errorf("expected to have ASSIGN here")
+		errMsg := "expected ASSIGN token ':=' but got %v"
+		p.addError(errMsg, p.curToken.Type)
+		return nil, fmt.Errorf(errMsg, p.curToken.Type)
 	}
 	assignToken := p.curToken
-	p.nextToken() // eat ':='
+	p.nextToken() // consume ':='
+
 	mathExpression, err := p.parseMathExpression()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse expression: %v", err) // Error handling - failed to parse math expression
+		p.addError("failed to parse assign command: expression error: %v", err)
+		return nil, err
 	}
+
 	if !p.curTokenIs(token.SEMICOLON) {
-		return nil, fmt.Errorf("expected semicolon got: %v", p.curToken) // Error handling - missing ';'
+		errMsg := "expected semicolon ';' but got %v"
+		p.addError(errMsg, p.curToken.Type)
+		return nil, fmt.Errorf(errMsg, p.curToken.Type)
 	}
-	p.nextToken() // eat ';'
+	p.nextToken() // consume ';'
+
 	return &ast.AssignCommand{
 		Identifier:     *identifier,
-		Token:          assignToken, // token.ASSIGN
+		Token:          assignToken,
 		MathExpression: *mathExpression,
 	}, nil
 }

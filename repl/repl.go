@@ -29,6 +29,10 @@ func Start(in io.Reader, out io.Writer) {
 		io.WriteString(out, program.String())
 		io.WriteString(out, fmt.Sprintf("%#+v", program))
 		io.WriteString(out, "\n")
+		for _, err := range p.Errors() {
+			io.WriteString(out, err)
+			fmt.Println()
+		}
 	}
 }
 
@@ -56,4 +60,8 @@ func StartFile(filepath string, out io.Writer) {
 	// Write the program's string representation to output
 	io.WriteString(out, program.String())
 	io.WriteString(out, "\n")
+	for _, err := range p.Errors() {
+		io.WriteString(out, err)
+		fmt.Println()
+	}
 }

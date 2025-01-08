@@ -47,13 +47,13 @@ func (p *Program) String() string {
 type Declaration struct {
 	IsTable     bool
 	Pidentifier Pidentifier
-	From        int
-	To          int
+	From        NumberLiteral
+	To          NumberLiteral
 }
 
 func (d *Declaration) String() string {
 	if d.IsTable {
-		return fmt.Sprintf("%s[%d:%d]", d.Pidentifier.String(), d.From, d.To)
+		return fmt.Sprintf("%s[%v:%v]", d.Pidentifier.String(), d.From, d.To)
 	} else {
 		return d.Pidentifier.String()
 	}
@@ -97,7 +97,30 @@ type NumberLiteral struct {
 func (nl *NumberLiteral) expressionNode()      {}
 func (nl *NumberLiteral) valueNode()           {}
 func (nl *NumberLiteral) TokenLiteral() string { return nl.Token.Literal }
-func (nl *NumberLiteral) String() string       { return fmt.Sprintf("%s", nl.Value) }
+func (nl *NumberLiteral) String() string       { return fmt.Sprintf("%v", nl.Value) }
+
+type ProcCallCommand struct {
+	Token token.Token
+	Name  Pidentifier
+	Args  []Pidentifier
+}
+
+func (pcc *ProcCallCommand) commandNode()         {}
+func (pcc *ProcCallCommand) TokenLiteral() string { return pcc.Token.Literal }
+func (pcc *ProcCallCommand) String() string {
+	var string string
+	string += pcc.Name.String()
+	string += "("
+	for i, arg := range pcc.Args {
+		if i > 0 {
+			string += ", "
+		}
+		string += arg.String()
+	}
+	string += ")"
+	string += ";"
+	return string
+}
 
 type AssignCommand struct {
 	Identifier     Identifier  // Where will the expression be assigned to?
@@ -131,10 +154,35 @@ type WhileCommand struct {
 	Commands  []Command
 }
 
+func (wc *WhileCommand) commandNode()         {}
+func (wc *WhileCommand) TokenLiteral() string { return wc.Token.Literal }
+func (wc *WhileCommand) String() string {
+	var string string
+	string += "WHILE "
+	string += wc.Condition.String()
+	string += " DO "
+	string = appendCommands(string, wc.Commands)
+	string += " UNTIL "
+	string += ";"
+	return string
+}
+
 type RepeatCommand struct {
 	Token     token.Token //REPEAT
 	Commands  []Command
 	Condition Condition
+}
+
+func (rc *RepeatCommand) commandNode()         {}
+func (rc *RepeatCommand) TokenLiteral() string { return rc.Token.Literal }
+func (rc *RepeatCommand) String() string {
+	var string string
+	string += "REPEAT "
+	string = appendCommands(string, rc.Commands)
+	string += " UNTIL "
+	string += rc.Condition.String()
+	string += ";"
+	return string
 }
 
 type ForCommand struct {
@@ -144,6 +192,31 @@ type ForCommand struct {
 	From     Value
 	To       Value
 	Commands []Command
+}
+
+func (fc *ForCommand) commandNode()         {}
+func (fc *ForCommand) TokenLiteral() string { return fc.Token.Literal }
+func (fc *ForCommand) String() string {
+	var string string
+	string += "FOR "
+	string += fc.Iterator.Value
+	string += " FROM "
+	string += fc.From.String()
+	if fc.IsDownTo {
+		string += " DOWNTO "
+	} else {
+		string += " TO "
+	}
+	string = appendCommands(string, fc.Commands)
+	string += " ENDFOR"
+	return string
+}
+
+func appendCommands(string string, commands []Command) string {
+	for _, comm := range commands {
+		string += comm.String()
+	}
+	return string
 }
 
 type ReadCommand struct {
