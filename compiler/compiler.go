@@ -19,10 +19,7 @@ type Compiler struct {
 func New() *Compiler {
 	return &Compiler{
 		instructions: []code.Instruction{},
-		addresses: map[string]int{
-			"n": 1,
-			"p": 2,
-		},
+		addresses:    map[string]int{},
 	}
 }
 
@@ -39,25 +36,28 @@ func (c *Compiler) Compile(node ast.Node) error {
 		if err != nil {
 			return err
 		}
+		c.emit(code.HALT)
 	case *ast.Main:
-		// for _, decl := range node.Declarations {
-		// 	err := c.compileDeclaration(&decl)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
+		for _, decl := range node.Declarations {
+			err := c.compileDeclaration(&decl)
+			if err != nil {
+				return err
+			}
+		}
 		for _, comm := range node.Commands {
 			err := c.Compile(comm)
 			if err != nil {
 				return err
 			}
 		}
+	case *ast.RepeatCommand:
+		
 	case *ast.AssignCommand:
 		err := c.Compile(&node.MathExpression)
 		if err != nil {
 			return err
 		}
-		addr, err := c.getAddr(node.Identifier.Value)
+		addr, err := c.getAddr(node.Identifier.String())
 		if err != nil {
 			return err
 		}
@@ -74,6 +74,23 @@ func (c *Compiler) Compile(node ast.Node) error {
 			if err != nil {
 				return err
 			}
+		case token.MULT:
+			err := c.compileMultiplication(*node)
+			if err != nil {
+				return err
+			}
+		case token.DIVIDE:
+			err := c.compileDivision(*node)
+			if err != nil {
+				return err
+			}
+		case token.MODULO:
+			err := c.compileModulo(*node)
+			if err != nil {
+				return err
+			}
+		case token.ILLEGAL:
+			// TODO: single value expression
 		}
 	case *ast.WriteCommand:
 		int, _ := strconv.Atoi(node.Value.String()) //later add support for identifier values
@@ -83,6 +100,31 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.emit(code.GET, int64(int))
 	}
 	return nil
+}
+
+func (c *Compiler) compileDeclaration(declaration *ast.Declaration) error {
+	if !declaration.IsTable {
+		c.addresses[declaration.Pidentifier.Value] = len(c.addresses)
+	} else {
+		from, _ := strconv.Atoi(declaration.From.Value)
+		to, _ := strconv.Atoi(declaration.To.Value)
+		for i := from; i <= to; i++ {
+			c.addresses[fmt.Sprintf("%s[%d]", declaration.Pidentifier.Value, i)] = len(c.addresses)
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) compileMultiplication(expression ast.MathExpression) error {
+	panic("unimplemented")
+}
+
+func (c *Compiler) compileDivision(expression ast.MathExpression) error {
+	panic("unimplemented")
+}
+
+func (c *Compiler) compileModulo(expression ast.MathExpression) error {
+	panic("unimplemented")
 }
 
 func (c *Compiler) compileAddition(node ast.MathExpression) error {

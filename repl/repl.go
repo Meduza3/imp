@@ -26,12 +26,9 @@ func Start(in io.Reader, out io.Writer) {
 
 		lexer := lexer.New(line)
 		p := parser.New(lexer)
-		command, err := p.ParseCommand()
-		if err != nil {
-			io.WriteString(out, "parse error: "+err.Error())
-		}
+		program := p.ParseProgram()
 		compiler := compiler.New()
-		err = compiler.Compile(command)
+		err := compiler.Compile(program)
 		if err != nil {
 			io.WriteString(out, "compiler error: "+err.Error())
 		}
