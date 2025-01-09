@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/lexer"
 	"github.com/Meduza3/imp/parser"
 )
@@ -58,8 +59,13 @@ func StartFile(filepath string, out io.Writer) {
 	program := p.ParseProgram()
 
 	// Write the program's string representation to output
-	io.WriteString(out, program.String())
-	io.WriteString(out, "\n")
+	// io.WriteString(out, program.String())
+	// io.WriteString(out, "\n")
+	printer := ast.NewPrinter()
+	formattedCode := printer.Print(program)
+
+	io.WriteString(out, "Pretty-Printed Code:\n")
+	io.WriteString(out, formattedCode)
 	for _, err := range p.Errors() {
 		io.WriteString(out, err)
 		fmt.Println()

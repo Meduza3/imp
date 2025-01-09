@@ -18,6 +18,11 @@ func (l *Lexer) NextToken() token.Token {
 	switch l.ch {
 	case '+':
 		tok = l.newToken(token.PLUS, l.ch)
+	case '!':
+		if l.peekChar() == '=' {
+			tok = token.Token{Type: token.NEQUALS, Literal: "!=", Line: l.currentLine}
+		}
+		l.readChar()
 	case '(':
 		tok = l.newToken(token.LPAREN, l.ch)
 	case ')':

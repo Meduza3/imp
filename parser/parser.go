@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/token"
@@ -64,6 +65,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 }
 
 func (p *Parser) parseMain() (*ast.Main, error) {
+	fmt.Printf("in parseMain. Token = %s\n", p.curToken.Type)
 	main := ast.Main{}
 	if !p.curTokenIs(token.PROGRAM) {
 		return nil, fmt.Errorf("line %d: expected PROGRAM got %s", p.curToken.Line, p.curToken.Type)
@@ -95,12 +97,14 @@ func (p *Parser) parsePidentifier() ast.Pidentifier {
 }
 
 func (p *Parser) parseDeclarations() *[]ast.Declaration {
+	fmt.Printf("in parseDeclarations. Token=%s\n", p.curToken.Type)
 	var decl = []ast.Declaration{}
 	for !p.curTokenIs(token.BEGIN) {
-		if !p.peekTokenIs(token.LBRACKET) {
+		if !p.peekTokenIs(token.LBRACKET) { // not a table
 			pid := p.parsePidentifier()
 			decl = append(decl, ast.Declaration{IsTable: false, Pidentifier: pid})
 		} else {
+			// PIDENTIFIER = curToken
 			pid := p.parsePidentifier() // [ = curToken
 			p.nextToken()               // num = curToken
 			from := ast.NumberLiteral{
@@ -114,8 +118,10 @@ func (p *Parser) parseDeclarations() *[]ast.Declaration {
 				Value: p.curToken.Literal,
 			}
 			p.nextToken() // ] = curtoken
+			p.nextToken()
 			decl = append(decl, ast.Declaration{IsTable: true, Pidentifier: pid, From: from, To: to})
 		}
+
 		// Check if the next token is a comma before consuming it
 		if p.curTokenIs(token.COMMA) {
 			p.nextToken() // consume the comma
@@ -251,33 +257,34 @@ func (p *Parser) parseRepeatCommand() (*ast.RepeatCommand, error) {
 func (p *Parser) parseForCommand() (*ast.ForCommand, error) {
 	forComm := &ast.ForCommand{}
 	forToken := p.curToken
-	p.nextToken()
-	pid := p.parsePidentifier()
-	if !p.expectPeek(token.FROM) {
+	p.nextToken()               // Eat 'FOR'
+	pid := p.parsePidentifier() // Eat 'i'
+	if !p.curTokenIs(token.FROM) {
 		return nil, fmt.Errorf("failed to parse for line %d: expected FROM got %s", p.curToken.Line, p.curToken.Type)
 	}
-	p.nextToken()
-	valFrom, err := p.parseValue()
+	p.nextToken()                  // Eat "FROM"
+	valFrom, err := p.parseValue() //Eat val
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse for: failed to parse value at line %d: %v", p.curToken.Line, err)
 	}
 	if p.curToken.Type == token.TO {
 		forComm.IsDownTo = false
-	} else if p.curToken.Type == token.FROM {
+	} else if p.curToken.Type == token.DOWNTO {
 		forComm.IsDownTo = true
 	} else {
 		return nil, fmt.Errorf("failed to parse for line %d: expected DOWNTO or TO got %s", p.curToken.Line, p.curToken.Type)
 	}
-	p.nextToken()
+	p.nextToken() //eat TO/DOWNTO
 	valTo, err := p.parseValue()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse for: failed to parse value at line %d: %v", p.curToken.Line, err)
 	}
-	if !p.expectPeek(token.DO) {
+	if !p.curTokenIs(token.DO) {
 		return nil, fmt.Errorf("failed to parse for line %d: expected DO got %s", p.curToken.Line, p.curToken.Type)
 	}
+	p.nextToken() // eat 'DO'
 	commands := p.parseCommandsUntil(token.ENDFOR)
-	p.nextToken()
+	p.nextToken() // eat 'ENDFOR'
 	forComm.Token = forToken
 	forComm.Iterator = pid
 	forComm.From = valFrom
@@ -487,9 +494,9 @@ func (p *Parser) parseArgDecl() (*ast.ArgDecl, error) {
 		arg.IsTable = true
 		p.nextToken()
 	}
+	arg.Token = p.curToken
 	name := p.parsePidentifier()
 	arg.Name = name
-	arg.Token = p.curToken
 	return &arg, nil
 }
 
@@ -504,7 +511,7 @@ func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Comman
 			// maybe break or continue
 		}
 		commands = append(commands, command)
-		// time.Sleep(300 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	return &commands
 }
@@ -532,10 +539,10 @@ func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
 		}
 		identifier.Index = index
 
-		if !p.expectPeek(token.RBRACKET) { // RBRACKET = ]
-			err = p.peekError(token.RBRACKET)
-			return nil, err // Error handling can be added here
+		if !p.curTokenIs(token.RBRACKET) { // RBRACKET = ]
+			return nil, fmt.Errorf("parseIdentifier: expected a ']' , got %s", p.peekToken.Type)
 		}
+		p.nextToken()
 	}
 	return identifier, nil
 }
@@ -552,6 +559,7 @@ func (p *Parser) parseIndex() (ast.Expression, error) {
 	default:
 		return nil, fmt.Errorf("failed to parse index: not valid token: %v", p.curToken)
 	}
+	p.nextToken()
 	return index, nil
 }
 
@@ -600,7 +608,7 @@ func (p *Parser) parseMathExpression() (*ast.MathExpression, error) {
 
 func isOperator(tt token.TokenType) bool {
 	switch tt {
-	case token.PLUS, token.MINUS, token.DIVIDE, token.MULT:
+	case token.PLUS, token.MINUS, token.DIVIDE, token.MULT, token.MODULO:
 		return true
 	}
 	return false

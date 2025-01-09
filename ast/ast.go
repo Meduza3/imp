@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/Meduza3/imp/token"
@@ -145,7 +146,7 @@ type Declaration struct {
 
 func (d *Declaration) String() string {
 	if d.IsTable {
-		return fmt.Sprintf("%s[%v:%v]", d.Pidentifier.String(), d.From, d.To)
+		return fmt.Sprintf("%s[%v:%v]", d.Pidentifier.String(), d.From.String(), d.To.String())
 	} else {
 		return d.Pidentifier.String()
 	}
@@ -173,7 +174,7 @@ type Condition struct {
 func (c *Condition) expressionNode()      {}
 func (c *Condition) TokenLiteral() string { return c.Operator.Literal }
 func (c *Condition) String() string {
-	return c.Left.String() + c.Operator.Literal + c.Right.String()
+	return c.Left.String() + " " + c.Operator.Literal + " " + c.Right.String()
 }
 
 type Value interface {
@@ -189,7 +190,13 @@ type NumberLiteral struct {
 func (nl *NumberLiteral) expressionNode()      {}
 func (nl *NumberLiteral) valueNode()           {}
 func (nl *NumberLiteral) TokenLiteral() string { return nl.Token.Literal }
-func (nl *NumberLiteral) String() string       { return fmt.Sprintf("%v", nl.Value) }
+func (nl *NumberLiteral) String() string {
+	int, err := strconv.Atoi(nl.Value)
+	if err != nil {
+		return "oops"
+	}
+	return fmt.Sprintf("%d", int)
+}
 
 type ProcCallCommand struct {
 	Token token.Token
@@ -319,7 +326,7 @@ type ReadCommand struct {
 func (rc *ReadCommand) commandNode()         {}
 func (rc *ReadCommand) TokenLiteral() string { return rc.Token.Literal }
 func (rc *ReadCommand) String() string {
-	return "WRITE " + rc.Identifier.String() + ";"
+	return "READ " + rc.Identifier.String() + ";"
 }
 
 type WriteCommand struct {
