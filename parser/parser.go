@@ -46,12 +46,12 @@ func (p *Parser) peekError(t token.TokenType) error {
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
-	fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
+	// fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
 }
 
 // Parse program is the first function that is being called when you start to parse the program
 func (p *Parser) ParseProgram() *ast.Program {
-	fmt.Printf("in ParseProgram: %v\n", p.curToken)
+	// fmt.Printf("in ParseProgram: %v\n", p.curToken)
 	//Currently the main is a list of commands
 	token := token.Token{Literal: "PROGRAM_ALL", Type: token.PROGRAM_ALL}
 	procedures := p.parseProcedures()
@@ -65,7 +65,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 }
 
 func (p *Parser) parseMain() (*ast.Main, error) {
-	fmt.Printf("in parseMain. Token = %s\n", p.curToken.Type)
+	// fmt.Printf("in parseMain. Token = %s\n", p.curToken.Type)
 	main := ast.Main{}
 	if !p.curTokenIs(token.PROGRAM) {
 		return nil, fmt.Errorf("line %d: expected PROGRAM got %s", p.curToken.Line, p.curToken.Type)
@@ -87,7 +87,7 @@ func (p *Parser) parseMain() (*ast.Main, error) {
 }
 
 func (p *Parser) parsePidentifier() ast.Pidentifier {
-	fmt.Printf("in parsePidentifier\n")
+	// fmt.Printf("in parsePidentifier\n")
 	pid := ast.Pidentifier{
 		Value: p.curToken.Literal,
 		Token: p.curToken,
@@ -97,7 +97,7 @@ func (p *Parser) parsePidentifier() ast.Pidentifier {
 }
 
 func (p *Parser) parseDeclarations() *[]ast.Declaration {
-	fmt.Printf("in parseDeclarations. Token=%s\n", p.curToken.Type)
+	// fmt.Printf("in parseDeclarations. Token=%s\n", p.curToken.Type)
 	var decl = []ast.Declaration{}
 	for !p.curTokenIs(token.BEGIN) {
 		if !p.peekTokenIs(token.LBRACKET) { // not a table
@@ -136,8 +136,8 @@ func (p *Parser) parseDeclarations() *[]ast.Declaration {
 
 // Uses the current token to identify which command it is
 // Should return NIL when it failed to parse the command
-func (p *Parser) parseCommand() (ast.Command, error) {
-	fmt.Printf("in parseCommand: %v\n", p.curToken)
+func (p *Parser) ParseCommand() (ast.Command, error) {
+	// fmt.Printf("in parseCommand: %v\n", p.curToken)
 
 	switch p.curToken.Type {
 	case token.PIDENTIFIER:
@@ -217,7 +217,7 @@ func (p *Parser) parseWhileCommand() (*ast.WhileCommand, error) {
 	p.nextToken()
 	condition, err := p.parseCondition()
 	if err != nil {
-		fmt.Printf("failed to parse condition: %v", err)
+		// fmt.Printf("failed to parse condition: %v", err)
 	}
 	if !p.curTokenIs(token.DO) {
 		return nil, fmt.Errorf("failed to parse while command, expected DO got %v", p.curToken.Type)
@@ -294,7 +294,7 @@ func (p *Parser) parseForCommand() (*ast.ForCommand, error) {
 }
 
 func (p *Parser) parseReadCommand() (*ast.ReadCommand, error) {
-	fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
+	// fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
 	tok := p.curToken
 	p.nextToken() // Skip "READ". p.curToken now holds the value to read
 	value, err := p.parseIdentifier()
@@ -309,7 +309,7 @@ func (p *Parser) parseReadCommand() (*ast.ReadCommand, error) {
 }
 
 func (p *Parser) parseWriteCommand() (*ast.WriteCommand, error) {
-	fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
+	// fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
 	tok := p.curToken
 	p.nextToken() // Skip "WRITE". p.curToken now holds the value to write
 	value, err := p.parseValue()
@@ -324,7 +324,7 @@ func (p *Parser) parseWriteCommand() (*ast.WriteCommand, error) {
 }
 
 func (p *Parser) parseAssignCommand() (*ast.AssignCommand, error) {
-	fmt.Printf("in parseAssignCommand: %v\n", p.curToken)
+	// fmt.Printf("in parseAssignCommand: %v\n", p.curToken)
 
 	identifier, err := p.parseIdentifier()
 	if err != nil {
@@ -361,7 +361,7 @@ func (p *Parser) parseAssignCommand() (*ast.AssignCommand, error) {
 }
 
 func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
-	fmt.Printf("in parseIfCommand: %v\n", p.curToken)
+	// fmt.Printf("in parseIfCommand: %v\n", p.curToken)
 	ifCmd := ast.IfCommand{Token: p.curToken}
 	p.nextToken()                        // Eat "IF"
 	condition, err := p.parseCondition() // Eat conditon
@@ -386,10 +386,10 @@ func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
 }
 
 func (p *Parser) parseCommands() *[]ast.Command {
-	fmt.Printf("in parseCommands: %v\n", p.curToken)
+	// fmt.Printf("in parseCommands: %v\n", p.curToken)
 	var commands = []ast.Command{}
 	for p.curToken.Type != token.EOF {
-		command, err := p.parseCommand()
+		command, err := p.ParseCommand()
 		if err != nil {
 			p.errors = append(p.errors, fmt.Sprintf("failed to parse command: %v", err))
 			break
@@ -441,7 +441,7 @@ func (p *Parser) parseProcedure() (*ast.Procedure, error) {
 }
 
 func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
-	fmt.Printf("in parseProcHead\n")
+	// fmt.Printf("in parseProcHead\n")
 	procHead := ast.ProcHead{}
 	procHead.Token = p.curToken
 	name := p.parsePidentifier()
@@ -464,7 +464,7 @@ func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
 
 func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
 	args := []ast.ArgDecl{}
-	fmt.Printf("in parseArgsDecl. token=%v\n", p.curToken)
+	// fmt.Printf("in parseArgsDecl. token=%v\n", p.curToken)
 	if !p.curTokenIs(token.PIDENTIFIER) && !p.curTokenIs(token.T) {
 		return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier or T in args, got %s", p.curToken.Line, p.curToken.Type)
 	}
@@ -504,8 +504,8 @@ func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Comman
 	commands := []ast.Command{}
 	// parse commands until we hit one of the stopTokens (ELSE, ENDIF) or EOF
 	for !p.inSet(p.curToken.Type, stopTokens) && p.curToken.Type != token.EOF {
-		fmt.Printf("parsing until: %v\n", stopTokens)
-		command, err := p.parseCommand()
+		// fmt.Printf("parsing until: %v\n", stopTokens)
+		command, err := p.ParseCommand()
 		if err != nil {
 			p.errors = append(p.errors, fmt.Sprintf("failed to parse command: %v", err))
 			// maybe break or continue
@@ -524,7 +524,7 @@ func (p *Parser) inSet(tt token.TokenType, set []token.TokenType) bool {
 	return false
 }
 func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
-	fmt.Printf("in parseIdentifier: %v\n", p.curToken)
+	// fmt.Printf("in parseIdentifier: %v\n", p.curToken)
 	identifier := &ast.Identifier{
 		Token: p.curToken,
 		Value: p.curToken.Literal,
@@ -548,7 +548,7 @@ func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
 }
 
 func (p *Parser) parseIndex() (ast.Expression, error) {
-	fmt.Printf("in parseIndex: %v\n", p.curToken)
+	// fmt.Printf("in parseIndex: %v\n", p.curToken)
 
 	var index ast.Expression
 	switch p.curToken.Type {
@@ -581,7 +581,7 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 }
 
 func (p *Parser) parseMathExpression() (*ast.MathExpression, error) {
-	fmt.Printf("in parseMathExpression: %v\n", p.curToken)
+	// fmt.Printf("in parseMathExpression: %v\n", p.curToken)
 	left, err := p.parseValue()
 	if err != nil {
 		return nil, fmt.Errorf("in parseMathExpression: failed to parse left value: %v", err) // Error handling - failed to parse left-hand value
@@ -623,7 +623,7 @@ func isConditionOperator(tt token.TokenType) bool {
 }
 
 func (p *Parser) parseCondition() (*ast.Condition, error) {
-	fmt.Printf("in parseCondition: %v\n", p.curToken)
+	// fmt.Printf("in parseCondition: %v\n", p.curToken)
 	left, err := p.parseValue()
 	if err != nil {
 		return nil, fmt.Errorf("in parseCondition: failed to parse left value: %v", err) // Error handling - failed to parse left-hand value
@@ -646,7 +646,7 @@ func (p *Parser) parseCondition() (*ast.Condition, error) {
 }
 
 func (p *Parser) parseValue() (ast.Value, error) {
-	fmt.Printf("in parseValue: %v\n", p.curToken)
+	// fmt.Printf("in parseValue: %v\n", p.curToken)
 	switch p.curToken.Type {
 	case token.NUM:
 		val := &ast.NumberLiteral{

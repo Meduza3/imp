@@ -23,6 +23,7 @@ const (
 	JNEG          = "JNEG"
 	RTRN          = "RTRN"
 	HALT          = "HALT"
+	COMM          = "#"
 )
 
 type Definition struct {
@@ -60,8 +61,23 @@ func Lookup(op byte) (*Definition, error) {
 }
 
 type Instruction struct {
-	Opcode  Opcode
-	Operand int64
+	Opcode     Opcode
+	HasOperand bool
+	Operand    int64
+	Comment    string
+}
+
+func (i Instruction) String() string {
+	var string string
+	if i.HasOperand {
+		string += i.Opcode + " " + fmt.Sprintf("%d", i.Operand)
+	} else {
+		string += i.Opcode
+	}
+	if i.Comment != "" {
+		string += " # " + i.Comment
+	}
+	return string
 }
 
 func Make(op Opcode, operands ...int64) (*Instruction, error) {
@@ -72,13 +88,13 @@ func Make(op Opcode, operands ...int64) (*Instruction, error) {
 	switch len(operands) {
 	case 0:
 		if def.NumOperands == 0 {
-			return &Instruction{Opcode: op}, nil
+			return &Instruction{Opcode: op, HasOperand: false}, nil
 		} else {
 			return nil, fmt.Errorf("missing operand for opcode %s", op)
 		}
 	case 1:
 		if def.NumOperands == 1 {
-			return &Instruction{Opcode: op, Operand: operands[0]}, nil
+			return &Instruction{Opcode: op, HasOperand: true, Operand: operands[0]}, nil
 		} else {
 			return nil, fmt.Errorf("unnecesary operand for opcode %s", op)
 		}

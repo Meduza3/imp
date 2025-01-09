@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Meduza3/imp/ast"
+	"github.com/Meduza3/imp/compiler"
 	"github.com/Meduza3/imp/lexer"
 	"github.com/Meduza3/imp/parser"
 )
@@ -14,6 +15,34 @@ import (
 const PROMPT = ">:] imp>"
 
 func Start(in io.Reader, out io.Writer) {
+	scanner := bufio.NewScanner(in)
+	for {
+		fmt.Print(PROMPT)
+		scanned := scanner.Scan()
+		if !scanned {
+			break
+		}
+		line := scanner.Text()
+
+		lexer := lexer.New(line)
+		p := parser.New(lexer)
+		command, err := p.ParseCommand()
+		if err != nil {
+			io.WriteString(out, "parse error: "+err.Error())
+		}
+		compiler := compiler.New()
+		err = compiler.Compile(command)
+		if err != nil {
+			io.WriteString(out, "compiler error: "+err.Error())
+		}
+		bytecode := compiler.Bytecode()
+		for _, ins := range bytecode.Instructions {
+			io.WriteString(out, ins.String()+"\n")
+		}
+	}
+}
+
+func StartParsing(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	for {
 		fmt.Print(PROMPT)
@@ -37,7 +66,7 @@ func Start(in io.Reader, out io.Writer) {
 	}
 }
 
-func StartFile(filepath string, out io.Writer) {
+func StartParsingFile(filepath string, out io.Writer) {
 	// Open the file
 	file, err := os.Open(filepath)
 	if err != nil {

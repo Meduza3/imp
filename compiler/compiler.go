@@ -6,15 +6,23 @@ import (
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/code"
+	"github.com/Meduza3/imp/token"
 )
+
+const TEMP int64 = 420
 
 type Compiler struct {
 	instructions []code.Instruction
+	addresses    map[string]int
 }
 
 func New() *Compiler {
 	return &Compiler{
 		instructions: []code.Instruction{},
+		addresses: map[string]int{
+			"n": 1,
+			"p": 2,
+		},
 	}
 }
 
@@ -44,11 +52,99 @@ func (c *Compiler) Compile(node ast.Node) error {
 				return err
 			}
 		}
+	case *ast.AssignCommand:
+		err := c.Compile(&node.MathExpression)
+		if err != nil {
+			return err
+		}
+		addr, err := c.getAddr(node.Identifier.Value)
+		if err != nil {
+			return err
+		}
+		c.emit(code.STORE, int64(addr))
+	case *ast.MathExpression:
+		switch node.Operator.Type {
+		case token.PLUS:
+			err := c.compileAddition(*node)
+			if err != nil {
+				return err
+			}
+		case token.MINUS:
+			err := c.compileSubtraction(*node)
+			if err != nil {
+				return err
+			}
+		}
 	case *ast.WriteCommand:
 		int, _ := strconv.Atoi(node.Value.String()) //later add support for identifier values
 		c.emit(code.PUT, int64(int))
+	case *ast.ReadCommand:
+		int, _ := strconv.Atoi(node.Identifier.String()) //later add support for identifier values
+		c.emit(code.GET, int64(int))
 	}
 	return nil
+}
+
+func (c *Compiler) compileAddition(node ast.MathExpression) error {
+	leftVal, err := strconv.Atoi(node.Left.String())
+	if err != nil {
+		addr, err := c.getAddr(node.Left.String())
+		if err != nil {
+			return fmt.Errorf("failed to get address of leftVal: %v", err)
+		}
+		c.emit(code.LOAD, int64(addr))
+	} else {
+		c.emit(code.SET, int64(leftVal))
+	}
+
+	rightVal, err := strconv.Atoi(node.Right.String())
+	if err != nil {
+		addr, err := c.getAddr(node.Right.String())
+		if err != nil {
+			return fmt.Errorf("failed to get address of rightVal: %v", err)
+		}
+		c.emit(code.ADD, int64(addr))
+	} else {
+		c.emit(code.STORE, TEMP)
+		c.emit(code.SET, int64(rightVal))
+		c.emit(code.ADD, TEMP)
+	}
+	return nil
+}
+
+func (c *Compiler) compileSubtraction(node ast.MathExpression) error {
+	leftVal, err := strconv.Atoi(node.Left.String())
+	if err != nil {
+		addr, err := c.getAddr(node.Left.String())
+		if err != nil {
+			return fmt.Errorf("failed to get address of leftVal: %v", err)
+		}
+		c.emit(code.LOAD, int64(addr))
+	} else {
+		c.emit(code.SET, int64(leftVal))
+	}
+
+	rightVal, err := strconv.Atoi(node.Right.String())
+	if err != nil {
+		addr, err := c.getAddr(node.Right.String())
+		if err != nil {
+			return fmt.Errorf("failed to get address of rightVal: %v", err)
+		}
+		c.emit(code.SUB, int64(addr))
+	} else {
+		c.emit(code.STORE, TEMP)
+		c.emit(code.SET, int64(rightVal))
+		c.emit(code.SUB, TEMP)
+	}
+	return nil
+}
+
+func (c *Compiler) getAddr(identifier string) (int, error) {
+	addr, ok := c.addresses[identifier]
+	if !ok {
+		return 0, fmt.Errorf("use of undeclared identifier: %s", identifier)
+	}
+	return addr, nil
 }
 
 func (c *Compiler) emit(op code.Opcode, operands ...int64) (int, error) {
