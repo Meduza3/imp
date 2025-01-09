@@ -1,0 +1,9 @@
+PROGRAM IS n
+BEGIN
+    READ n;
+    REPEAT
+    WRITE n;
+    n := n - 1;
+    UNTIL n=0;
+END
+# PROGRAM IS n BEGIN READ n; REPEAT WRITE n; n := n - 1; UNTIL n = 0; END

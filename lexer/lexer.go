@@ -65,7 +65,7 @@ func (l *Lexer) NextToken() token.Token {
 			l.readChar()
 			tok = token.Token{Type: token.GEQ, Literal: ">=", Line: l.currentLine}
 		} else {
-			tok = l.newToken(token.GE, l.ch)
+			tok = l.newToken(token.GR, l.ch)
 		}
 	case ';':
 		tok = l.newToken(token.SEMICOLON, l.ch)

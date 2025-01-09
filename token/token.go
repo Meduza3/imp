@@ -48,7 +48,7 @@ const (
 	MODULO                = "%"
 	EQUALS                = "="
 	NEQUALS               = "!="
-	GE                    = ">"
+	GR                    = ">"
 	LE                    = "<"
 	GEQ                   = ">="
 	LEQ                   = "<="

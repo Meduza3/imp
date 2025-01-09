@@ -616,7 +616,7 @@ func isOperator(tt token.TokenType) bool {
 
 func isConditionOperator(tt token.TokenType) bool {
 	switch tt {
-	case token.LEQ, token.GEQ, token.LE, token.GE, token.EQUALS, token.NEQUALS:
+	case token.LEQ, token.GEQ, token.LE, token.GR, token.EQUALS, token.NEQUALS:
 		return true
 	}
 	return false

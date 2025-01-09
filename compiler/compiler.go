@@ -51,7 +51,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 		}
 	case *ast.RepeatCommand:
-		
+		return c.compileRepeatCommand(node)
 	case *ast.AssignCommand:
 		err := c.Compile(&node.MathExpression)
 		if err != nil {
@@ -99,6 +99,98 @@ func (c *Compiler) Compile(node ast.Node) error {
 		int, _ := strconv.Atoi(node.Identifier.String()) //later add support for identifier values
 		c.emit(code.GET, int64(int))
 	}
+	return nil
+}
+
+func (c *Compiler) compileRepeatCommand(rc *ast.RepeatCommand) error {
+	startAddr := len(c.instructions)
+	for _, cmd := range rc.Commands {
+		err := c.Compile(cmd)
+		if err != nil {
+			return err
+		}
+	}
+
+	operator := rc.Condition.Operator.Type
+
+	conditionCompiler := func(jumpBack int) error {
+		switch operator {
+		case token.GR: // >
+			// Jeśli p0 > 0, przejdź do następnej instrukcji (kontynuuj)
+			// W przeciwnym razie, skocz do początku pętli
+			proceedAddr := 1
+			c.emit(code.JPOS, int64(proceedAddr)) // Jeśli p0 > 0, przejdź dalej
+			c.emit(code.JUMP, int64(jumpBack))    // W przeciwnym razie, skocz do startAddr
+
+		case token.GEQ: // >=
+			// Jeśli p0 > 0 lub p0 == 0, przejdź do następnej instrukcji (kontynuuj)
+			// W przeciwnym razie, skocz do początku pętli
+			proceedAddr := 2
+			c.emit(code.JPOS, int64(proceedAddr))  // Jeśli p0 > 0, przejdź dalej
+			c.emit(code.JZERO, int64(proceedAddr)) // Jeśli p0 == 0, przejdź dalej
+			c.emit(code.JUMP, int64(jumpBack))     // W przeciwnym razie, skocz do startAddr
+
+		case token.EQUALS: // ==
+			// Jeśli p0 == 0, przejdź do następnej instrukcji (kontynuuj)
+			// W przeciwnym razie, skocz do początku pętli
+			proceedAddr := 1
+			c.emit(code.JZERO, int64(proceedAddr)) // Jeśli p0 == 0, przejdź dalej
+			c.emit(code.JUMP, int64(jumpBack))     // W przeciwnym razie, skocz do startAddr
+
+		case token.LEQ: // <=
+			// Jeśli p0 < 0 lub p0 == 0, przejdź do następnej instrukcji (kontynuuj)
+			// W przeciwnym razie, skocz do początku pętli
+			proceedAddr := 2
+			c.emit(code.JNEG, int64(proceedAddr))  // Jeśli p0 < 0, przejdź dalej
+			c.emit(code.JZERO, int64(proceedAddr)) // Jeśli p0 == 0, przejdź dalej
+			c.emit(code.JUMP, int64(jumpBack))     // W przeciwnym razie, skocz do startAddr
+
+		case token.LE: // <
+			// Jeśli p0 < 0, przejdź do następnej instrukcji (kontynuuj)
+			// W przeciwnym razie, skocz do początku pętli
+			proceedAddr := 1
+			c.emit(code.JNEG, int64(proceedAddr)) // Jeśli p0 < 0, przejdź dalej
+			c.emit(code.JUMP, int64(jumpBack))    // W przeciwnym razie, skocz do startAddr
+
+		case token.NEQUALS:
+			proceedAddr := 2
+			c.emit(code.JNEG, int64(proceedAddr))
+			c.emit(code.JPOS, int64(proceedAddr))
+			c.emit(code.JZERO, int64(jumpBack))
+		default:
+			return fmt.Errorf("nieobsługiwany operator warunkowy: %v", operator)
+		}
+		return nil
+	}
+
+	leftVal, err := strconv.Atoi(rc.Condition.Left.String())
+	if err != nil {
+		addr, err := c.getAddr(rc.Condition.Left.String())
+		if err != nil {
+			return fmt.Errorf("failed to get address of leftVal: %v", err)
+		}
+		c.emit(code.LOAD, int64(addr))
+	} else {
+		c.emit(code.SET, int64(leftVal))
+	}
+
+	rightVal, err := strconv.Atoi(rc.Condition.Right.String())
+	if err != nil {
+		addr, err := c.getAddr(rc.Condition.Right.String())
+		if err != nil {
+			return fmt.Errorf("failed to get address of rightVal: %v", err)
+		}
+		c.emit(code.SUB, int64(addr))
+		jumpBack := -(len(c.instructions) - startAddr)
+		conditionCompiler(jumpBack)
+	} else {
+		c.emit(code.STORE, TEMP)
+		c.emit(code.SET, int64(rightVal))
+		c.emit(code.SUB, TEMP)
+		jumpBack := -(len(c.instructions) - startAddr)
+		conditionCompiler(jumpBack)
+	}
+
 	return nil
 }
 
@@ -155,7 +247,7 @@ func (c *Compiler) compileAddition(node ast.MathExpression) error {
 }
 
 func (c *Compiler) compileSubtraction(node ast.MathExpression) error {
-	leftVal, err := strconv.Atoi(node.Left.String())
+	rightVal, err := strconv.Atoi(node.Left.String())
 	if err != nil {
 		addr, err := c.getAddr(node.Left.String())
 		if err != nil {
@@ -163,10 +255,10 @@ func (c *Compiler) compileSubtraction(node ast.MathExpression) error {
 		}
 		c.emit(code.LOAD, int64(addr))
 	} else {
-		c.emit(code.SET, int64(leftVal))
+		c.emit(code.SET, int64(rightVal))
 	}
 
-	rightVal, err := strconv.Atoi(node.Right.String())
+	leftVal, err := strconv.Atoi(node.Right.String())
 	if err != nil {
 		addr, err := c.getAddr(node.Right.String())
 		if err != nil {
@@ -175,7 +267,7 @@ func (c *Compiler) compileSubtraction(node ast.MathExpression) error {
 		c.emit(code.SUB, int64(addr))
 	} else {
 		c.emit(code.STORE, TEMP)
-		c.emit(code.SET, int64(rightVal))
+		c.emit(code.SET, int64(leftVal))
 		c.emit(code.SUB, TEMP)
 	}
 	return nil
