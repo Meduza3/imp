@@ -1,5 +1,4 @@
 PROGRAM IS
-	n, p
 BEGIN
     READ n;
     REPEAT
