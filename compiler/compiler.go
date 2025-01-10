@@ -93,11 +93,22 @@ func (c *Compiler) Compile(node ast.Node) error {
 			// TODO: single value expression
 		}
 	case *ast.WriteCommand:
-		int, _ := strconv.Atoi(node.Value.String()) //later add support for identifier values
-		c.emit(code.PUT, int64(int))
+		int, err := strconv.Atoi(node.Value.String()) //later add support for identifier values
+		if err != nil {
+			addr, err := c.getAddr(node.Value.String())
+			if err != nil {
+				return err
+			}
+			c.emit(code.PUT, int64(addr))
+		}
+		c.emit(code.SET, int64(int))
+		c.emit(code.PUT, 0)
 	case *ast.ReadCommand:
-		int, _ := strconv.Atoi(node.Identifier.String()) //later add support for identifier values
-		c.emit(code.GET, int64(int))
+		addr, err := c.getAddr(node.Identifier.Value)
+		if err != nil {
+			return err
+		}
+		c.emit(code.GET, int64(addr))
 	}
 	return nil
 }
@@ -118,14 +129,14 @@ func (c *Compiler) compileRepeatCommand(rc *ast.RepeatCommand) error {
 		case token.GR: // >
 			// Jeśli p0 > 0, przejdź do następnej instrukcji (kontynuuj)
 			// W przeciwnym razie, skocz do początku pętli
-			proceedAddr := 1
+			proceedAddr := 2
 			c.emit(code.JPOS, int64(proceedAddr)) // Jeśli p0 > 0, przejdź dalej
 			c.emit(code.JUMP, int64(jumpBack))    // W przeciwnym razie, skocz do startAddr
 
 		case token.GEQ: // >=
 			// Jeśli p0 > 0 lub p0 == 0, przejdź do następnej instrukcji (kontynuuj)
 			// W przeciwnym razie, skocz do początku pętli
-			proceedAddr := 2
+			proceedAddr := 3
 			c.emit(code.JPOS, int64(proceedAddr))  // Jeśli p0 > 0, przejdź dalej
 			c.emit(code.JZERO, int64(proceedAddr)) // Jeśli p0 == 0, przejdź dalej
 			c.emit(code.JUMP, int64(jumpBack))     // W przeciwnym razie, skocz do startAddr
@@ -133,14 +144,14 @@ func (c *Compiler) compileRepeatCommand(rc *ast.RepeatCommand) error {
 		case token.EQUALS: // ==
 			// Jeśli p0 == 0, przejdź do następnej instrukcji (kontynuuj)
 			// W przeciwnym razie, skocz do początku pętli
-			proceedAddr := 1
+			proceedAddr := 2
 			c.emit(code.JZERO, int64(proceedAddr)) // Jeśli p0 == 0, przejdź dalej
 			c.emit(code.JUMP, int64(jumpBack))     // W przeciwnym razie, skocz do startAddr
 
 		case token.LEQ: // <=
 			// Jeśli p0 < 0 lub p0 == 0, przejdź do następnej instrukcji (kontynuuj)
 			// W przeciwnym razie, skocz do początku pętli
-			proceedAddr := 2
+			proceedAddr := 3
 			c.emit(code.JNEG, int64(proceedAddr))  // Jeśli p0 < 0, przejdź dalej
 			c.emit(code.JZERO, int64(proceedAddr)) // Jeśli p0 == 0, przejdź dalej
 			c.emit(code.JUMP, int64(jumpBack))     // W przeciwnym razie, skocz do startAddr
@@ -148,12 +159,12 @@ func (c *Compiler) compileRepeatCommand(rc *ast.RepeatCommand) error {
 		case token.LE: // <
 			// Jeśli p0 < 0, przejdź do następnej instrukcji (kontynuuj)
 			// W przeciwnym razie, skocz do początku pętli
-			proceedAddr := 1
+			proceedAddr := 2
 			c.emit(code.JNEG, int64(proceedAddr)) // Jeśli p0 < 0, przejdź dalej
 			c.emit(code.JUMP, int64(jumpBack))    // W przeciwnym razie, skocz do startAddr
 
 		case token.NEQUALS:
-			proceedAddr := 2
+			proceedAddr := 3
 			c.emit(code.JNEG, int64(proceedAddr))
 			c.emit(code.JPOS, int64(proceedAddr))
 			c.emit(code.JZERO, int64(jumpBack))
@@ -181,13 +192,13 @@ func (c *Compiler) compileRepeatCommand(rc *ast.RepeatCommand) error {
 			return fmt.Errorf("failed to get address of rightVal: %v", err)
 		}
 		c.emit(code.SUB, int64(addr))
-		jumpBack := -(len(c.instructions) - startAddr)
+		jumpBack := -(len(c.instructions) - startAddr + 1)
 		conditionCompiler(jumpBack)
 	} else {
 		c.emit(code.STORE, TEMP)
 		c.emit(code.SET, int64(rightVal))
 		c.emit(code.SUB, TEMP)
-		jumpBack := -(len(c.instructions) - startAddr)
+		jumpBack := -(len(c.instructions) - startAddr + 1)
 		conditionCompiler(jumpBack)
 	}
 
@@ -196,12 +207,12 @@ func (c *Compiler) compileRepeatCommand(rc *ast.RepeatCommand) error {
 
 func (c *Compiler) compileDeclaration(declaration *ast.Declaration) error {
 	if !declaration.IsTable {
-		c.addresses[declaration.Pidentifier.Value] = len(c.addresses)
+		c.addresses[declaration.Pidentifier.Value] = len(c.addresses) + 1
 	} else {
 		from, _ := strconv.Atoi(declaration.From.Value)
 		to, _ := strconv.Atoi(declaration.To.Value)
 		for i := from; i <= to; i++ {
-			c.addresses[fmt.Sprintf("%s[%d]", declaration.Pidentifier.Value, i)] = len(c.addresses)
+			c.addresses[fmt.Sprintf("%s[%d]", declaration.Pidentifier.Value, i)] = len(c.addresses) + 1
 		}
 	}
 	return nil
@@ -247,29 +258,32 @@ func (c *Compiler) compileAddition(node ast.MathExpression) error {
 }
 
 func (c *Compiler) compileSubtraction(node ast.MathExpression) error {
-	rightVal, err := strconv.Atoi(node.Left.String())
-	if err != nil {
+	// 1. Załaduj lewą wartość (n) do akumulatora
+	if leftVal, err := strconv.Atoi(node.Left.String()); err == nil {
+		c.emit(code.SET, int64(leftVal))
+	} else {
 		addr, err := c.getAddr(node.Left.String())
 		if err != nil {
 			return fmt.Errorf("failed to get address of leftVal: %v", err)
 		}
 		c.emit(code.LOAD, int64(addr))
-	} else {
-		c.emit(code.SET, int64(rightVal))
 	}
 
-	leftVal, err := strconv.Atoi(node.Right.String())
-	if err != nil {
+	// 2. Odjęcie prawej wartości (1) od akumulatora
+	if rightVal, err := strconv.Atoi(node.Right.String()); err == nil {
+		// Jeśli prawa wartość jest liczbą, ustaw ją i przechowaj w TEMP
+		c.emit(code.SET, int64(rightVal))
+		c.emit(code.STORE, TEMP)
+		c.emit(code.SUB, TEMP) // Odejmij wartość z TEMP (czyli 1)
+	} else {
+		// Jeśli prawa wartość jest zmienną, odejmij bezpośrednio
 		addr, err := c.getAddr(node.Right.String())
 		if err != nil {
 			return fmt.Errorf("failed to get address of rightVal: %v", err)
 		}
 		c.emit(code.SUB, int64(addr))
-	} else {
-		c.emit(code.STORE, TEMP)
-		c.emit(code.SET, int64(leftVal))
-		c.emit(code.SUB, TEMP)
 	}
+
 	return nil
 }
 
