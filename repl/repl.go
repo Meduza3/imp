@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/Meduza3/imp/ast"
-	"github.com/Meduza3/imp/compiler"
+	"github.com/Meduza3/imp/ir"
 	"github.com/Meduza3/imp/lexer"
 	"github.com/Meduza3/imp/parser"
 )
@@ -27,13 +27,13 @@ func Start(in io.Reader, out io.Writer) {
 		lexer := lexer.New(line)
 		p := parser.New(lexer)
 		program := p.ParseProgram()
-		compiler := compiler.New()
-		err := compiler.Compile(program)
-		if err != nil {
-			io.WriteString(out, "compiler error: "+err.Error())
-		}
-		bytecode := compiler.Bytecode()
-		for _, ins := range bytecode.Instructions {
+		compiler := ir.NewCodeGenerator()
+		compiler.GenerateProgram(*program)
+		// if err != nil {
+		// 	io.WriteString(out, "compiler error: "+err.Error())
+		// }
+		bytecode := compiler.GetInstructions()
+		for _, ins := range bytecode {
 			io.WriteString(out, ins.String()+"\n")
 		}
 	}
@@ -96,4 +96,50 @@ func StartParsingFile(filepath string, out io.Writer) {
 		io.WriteString(out, err)
 		fmt.Println()
 	}
+}
+
+func StartFile(filepath string, out io.Writer) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		fmt.Fprintf(out, "Error opening file %s: %v\n", filepath, err)
+		return
+	}
+	defer file.Close()
+
+	// Read the entire file content
+	content, err := io.ReadAll(file)
+	if err != nil {
+		fmt.Fprintf(out, "Error reading file %s: %v\n", filepath, err)
+		return
+	}
+
+	// Pass the entire content to the parser
+	l := lexer.New(string(content))
+	p := parser.New(l)
+	program := p.ParseProgram()
+	compiler := ir.NewCodeGenerator()
+
+	compiler.GenerateProgram(*program)
+	// if err != nil {
+	// 	io.WriteString(out, "compiler error: "+err.Error())
+	// }
+	bytecode := compiler.GetInstructions()
+	for _, ins := range bytecode {
+		io.WriteString(out, ins.String()+"\n")
+	}
+	for _, symbol := range compiler.GetSymbolTable() {
+		fmt.Printf("%+v\n", symbol)
+	}
+	cfgs, mainBlocks := ir.BuildAllProceduresCFG(bytecode)
+	for _, blocks := range cfgs {
+		idom := ir.ComputeDominators(blocks)
+		df := ir.ComputeDominanceFrontiers(blocks, idom)
+		for i, blk := range blocks {
+			fmt.Printf("Block %d (label=%q), IDom=%d\n", i, blk.Label, idom[i])
+			fmt.Printf("   Dominance Frontier: %v\n", df[i])
+		}
+	}
+	// Display them
+	ir.PrintAllProceduresCFG(cfgs, mainBlocks)
+
 }
