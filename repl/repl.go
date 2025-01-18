@@ -131,14 +131,6 @@ func StartFile(filepath string, out io.Writer) {
 		fmt.Printf("%+v\n", symbol)
 	}
 	cfgs, mainBlocks := ir.BuildAllProceduresCFG(bytecode)
-	for _, blocks := range cfgs {
-		idom := ir.ComputeDominators(blocks)
-		df := ir.ComputeDominanceFrontiers(blocks, idom)
-		for i, blk := range blocks {
-			fmt.Printf("Block %d (label=%q), IDom=%d\n", i, blk.Label, idom[i])
-			fmt.Printf("   Dominance Frontier: %v\n", df[i])
-		}
-	}
 	// Display them
 	ir.PrintAllProceduresCFG(cfgs, mainBlocks)
 

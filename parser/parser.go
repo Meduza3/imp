@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Meduza3/imp/ast"
+	"github.com/Meduza3/imp/symboltable"
 	"github.com/Meduza3/imp/token"
 
 	"github.com/Meduza3/imp/lexer"
@@ -14,7 +15,8 @@ import (
 type Parser struct {
 	l *lexer.Lexer
 
-	errors []string
+	symbolTable symboltable.SymbolTable
+	errors      []string
 
 	curToken  token.Token
 	peekToken token.Token
@@ -25,8 +27,8 @@ func (p *Parser) addError(format string, args ...interface{}) {
 	p.errors = append(p.errors, msg)
 }
 
-func New(l *lexer.Lexer) *Parser {
-	p := &Parser{l: l, errors: []string{}}
+func New(l *lexer.Lexer, symbolTable symboltable.SymbolTable) *Parser {
+	p := &Parser{l: l, errors: []string{}, symbolTable: symbolTable}
 	p.nextToken()
 	p.nextToken()
 

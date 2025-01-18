@@ -375,15 +375,15 @@ func (ic *IfCommand) String() string {
 type Identifier struct {
 	Token token.Token // token.IDENT
 	Value string
-	Index Expression
+	Index string
 }
 
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) valueNode()           {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) String() string {
-	if i.Index != nil {
-		return i.Value + "[" + i.Index.String() + "]"
+	if i.Index != "" {
+		return i.Value + "[" + i.Index + "]"
 	}
 	return i.Value
 }

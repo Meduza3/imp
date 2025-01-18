@@ -2,40 +2,51 @@ package ir
 
 import (
 	"fmt"
-	"strconv"
+	"io"
 
 	"github.com/Meduza3/imp/ast"
+	"github.com/Meduza3/imp/symboltable"
 	"github.com/Meduza3/imp/token"
 )
 
-type SymbolTableEntry struct {
-	Name     string // Variable name
-	IsArray  bool   // Whether it’s an array
-	BaseAddr int    // Base address (or index) in memory
-	Size     int    // Size (if array)
-	From     int
-	To       int
-}
-
-type SymbolTable map[string]SymbolTableEntry
-
 type CodeGenerator struct {
-	symbolTable      SymbolTable
+	symbolTable      symboltable.SymbolTable
 	nextMemoryOffset int
+	program          ast.Program
 	instructions     []IRInstruction
 	tempCount        int
 	labelCount       int
 }
 
-func (cg *CodeGenerator) GetSymbolTable() SymbolTable {
-	return cg.symbolTable
+func (cg *CodeGenerator) walkAST(w io.Writer) {
+	for _, procedure := range cg.program.Procedures {
+		cg.walkProcedure(procedure, w)
+	}
+}
+
+func (cg *CodeGenerator) walkCommand(command ast.Command, w io.Writer) {
+	switch node := command.(type) {
+	case *ast.AssignCommand:
+		// First check if identifier is of type pid, pid[num] or pid[pid]
+		identifier := node.Identifier
+		entry := cg.symbolTable[identifier.Value]
+		switch entry.Type {
+		case "ARRAY":
+		case "IDENTIFIER":
+
+		}
+	}
+}
+
+func (cg *CodeGenerator) walkProcedure(procedure ast.Procedure, w io.Writer) {
+	// procHead := procedure.ProcHead
 }
 
 // NewCodeGenerator returns a fresh code generator
-func NewCodeGenerator() *CodeGenerator {
+func NewCodeGenerator(program ast.Program, symbolTable symboltable.SymbolTable) *CodeGenerator {
 	return &CodeGenerator{
-		symbolTable:      make(SymbolTable),
-		nextMemoryOffset: 1, // or wherever you want to start
+		program:     program,
+		symbolTable: symbolTable,
 	}
 }
 
@@ -83,60 +94,6 @@ func (cg *CodeGenerator) GenerateMain(main ast.Main) {
 	cg.emit(IRInstruction{
 		Op: OpHalt,
 	})
-}
-
-func (cg *CodeGenerator) AddToSymbolTable(decl ast.Declaration) {
-	name := decl.Pidentifier.String() // e.g. "myVar" or "arr"
-
-	// If this name is already declared, optionally throw an error or ignore
-	if _, exists := cg.symbolTable[name]; exists {
-		// handle duplicate declaration if needed
-		// e.g. panic(fmt.Sprintf("variable '%s' is already declared", name))
-	}
-
-	// Check if it's an array
-	if decl.IsTable {
-		// We need to parse the from/to fields to int
-		from, err1 := strconv.Atoi(decl.From.Value)
-		to, err2 := strconv.Atoi(decl.To.Value)
-		if err1 != nil || err2 != nil || from > to {
-			// handle parse error or invalid range
-			panic(fmt.Sprintf("invalid array range for %s[%s:%s]", name, decl.From.Value, decl.To.Value))
-		}
-
-		size := to - from + 1
-
-		// Create the entry
-		entry := SymbolTableEntry{
-			Name:     name,
-			IsArray:  true,
-			BaseAddr: cg.nextMemoryOffset, // where we 'allocate' it
-			Size:     size,
-			From:     from,
-			To:       to,
-		}
-
-		// Insert into the symbol table
-		cg.symbolTable[name] = entry
-
-		// Advance nextMemoryOffset by the size of this array
-		cg.nextMemoryOffset += size
-
-	} else {
-		// Scalar variable
-		entry := SymbolTableEntry{
-			Name:     name,
-			IsArray:  false,
-			BaseAddr: cg.nextMemoryOffset,
-			Size:     1,
-			From:     0, // meaningless for scalars
-			To:       0, // meaningless for scalars
-		}
-		cg.symbolTable[name] = entry
-
-		// Move to next free offset by 1
-		cg.nextMemoryOffset++
-	}
 }
 
 func (c *CodeGenerator) GenerateIfCommand(ifc ast.IfCommand) {
