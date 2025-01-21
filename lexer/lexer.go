@@ -1,13 +1,11 @@
 package lexer
 
 import (
-	"github.com/Meduza3/imp/symboltable"
 	"github.com/Meduza3/imp/token"
 )
 
 type Lexer struct {
 	input        string
-	symbolTable  symboltable.SymbolTable
 	position     int //current position
 	readPosition int // position + 1
 	ch           byte
@@ -81,12 +79,10 @@ func (l *Lexer) NextToken() token.Token {
 	default:
 		if isDigit(l.ch) {
 			literal := l.readNumber()
-			l.addToSymbolTable(literal, symboltable.Symbol{Type: "LITERAL", Name: literal})
 			tok = token.Token{Type: token.NUM, Literal: literal, Line: l.currentLine}
 			return tok
 		} else if isLowercaseLetter(l.ch) {
 			literal := l.readPidentifier()
-			l.addToSymbolTable(literal, symboltable.Symbol{Type: ""})
 			tok = token.Token{Type: token.PIDENTIFIER, Literal: literal, Line: l.currentLine}
 			return tok
 		} else if isUppercaseLetter(l.ch) {
@@ -106,21 +102,12 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func (l *Lexer) addToSymbolTable(name string, symbol symboltable.Symbol) {
-	got, ok := l.symbolTable[name]
-	if ok {
-		//Redeclaration of a symbol (second usage of literal '5')
-	} else {
-		l.symbolTable[name] = symbol
-	}
-
-}
 func (l *Lexer) newToken(tokenType token.TokenType, ch byte) token.Token {
 	return token.Token{Type: tokenType, Literal: string(ch), Line: l.currentLine}
 }
 
-func New(input string, symboltable symboltable.SymbolTable) *Lexer {
-	l := &Lexer{input: input, currentLine: 1, symbolTable: symboltable}
+func New(input string) *Lexer {
+	l := &Lexer{input: input, currentLine: 1}
 	l.readChar()
 	return l
 }

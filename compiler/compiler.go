@@ -27,12 +27,12 @@ func (c *Compiler) Compile(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Program:
 		for _, p := range node.Procedures {
-			err := c.Compile(&p)
+			err := c.Compile(p)
 			if err != nil {
 				return err
 			}
 		}
-		err := c.Compile(&node.Main)
+		err := c.Compile(node.Main)
 		if err != nil {
 			return err
 		}

@@ -39,12 +39,12 @@ func (p *Printer) writeLine(line string) {
 func (p *Printer) Print(program *Program) string {
 	// Print Procedures
 	for _, proc := range program.Procedures {
-		p.printProcedure(&proc)
+		p.printProcedure(proc)
 		p.sb.WriteString("\n") // Add a newline between procedures
 	}
 
 	// Print Main
-	p.printMain(&program.Main)
+	p.printMain(program.Main)
 
 	return p.sb.String()
 }

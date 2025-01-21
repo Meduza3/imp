@@ -6,17 +6,14 @@ import (
 	"time"
 
 	"github.com/Meduza3/imp/ast"
-	"github.com/Meduza3/imp/symboltable"
 	"github.com/Meduza3/imp/token"
 
 	"github.com/Meduza3/imp/lexer"
 )
 
 type Parser struct {
-	l *lexer.Lexer
-
-	symbolTable symboltable.SymbolTable
-	errors      []string
+	l      *lexer.Lexer
+	errors []string
 
 	curToken  token.Token
 	peekToken token.Token
@@ -27,8 +24,8 @@ func (p *Parser) addError(format string, args ...interface{}) {
 	p.errors = append(p.errors, msg)
 }
 
-func New(l *lexer.Lexer, symbolTable symboltable.SymbolTable) *Parser {
-	p := &Parser{l: l, errors: []string{}, symbolTable: symbolTable}
+func New(l *lexer.Lexer) *Parser {
+	p := &Parser{l: l, errors: []string{}}
 	p.nextToken()
 	p.nextToken()
 
@@ -62,7 +59,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 	if err != nil {
 		log.Fatalf("failed to parse main: %v", err)
 	}
-	program := &ast.Program{token, *procedures, *main}
+	program := &ast.Program{Token: token, Procedures: procedures, Main: main}
 	return program
 }
 
@@ -401,8 +398,8 @@ func (p *Parser) parseCommands() *[]ast.Command {
 	return &commands
 }
 
-func (p *Parser) parseProcedures() *[]ast.Procedure {
-	procedures := []ast.Procedure{}
+func (p *Parser) parseProcedures() []*ast.Procedure {
+	procedures := []*ast.Procedure{}
 	// parse commands until we hit one of the stopTokens (ELSE, ENDIF) or EOF
 	for p.curToken.Type != token.PROGRAM {
 		procedure, err := p.parseProcedure()
@@ -410,9 +407,9 @@ func (p *Parser) parseProcedures() *[]ast.Procedure {
 			p.errors = append(p.errors, fmt.Sprintf("failed to parse procedure: %v", err))
 			continue
 		}
-		procedures = append(procedures, *procedure)
+		procedures = append(procedures, procedure)
 	}
-	return &procedures
+	return procedures
 }
 
 func (p *Parser) parseProcedure() (*ast.Procedure, error) {
@@ -539,7 +536,7 @@ func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
 		if err != nil {
 			return nil, fmt.Errorf("in parseIdentifier(): failed to parse index: %v", err)
 		}
-		identifier.Index = index
+		identifier.Index = index.String()
 
 		if !p.curTokenIs(token.RBRACKET) { // RBRACKET = ]
 			return nil, fmt.Errorf("parseIdentifier: expected a ']' , got %s", p.peekToken.Type)

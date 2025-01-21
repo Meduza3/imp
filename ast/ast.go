@@ -28,8 +28,8 @@ type Expression interface {
 
 type Program struct {
 	Token      token.Token
-	Procedures []Procedure
-	Main       Main
+	Procedures []*Procedure
+	Main       *Main
 }
 
 func (p *Program) TokenLiteral() string { return p.Token.Literal }
@@ -151,6 +151,9 @@ func (d *Declaration) String() string {
 		return d.Pidentifier.String()
 	}
 }
+func (d *Declaration) TokenLiteral() string {
+	return d.Pidentifier.Token.Literal
+}
 
 // represtents "expression" in BNF
 type MathExpression struct {
@@ -162,7 +165,12 @@ type MathExpression struct {
 func (me *MathExpression) expressionNode()      {}
 func (me *MathExpression) TokenLiteral() string { return me.Operator.Literal }
 func (me *MathExpression) String() string {
-	return me.Left.String() + me.Operator.Literal + me.Right.String()
+	if me.Right == nil {
+		// single operand, no operator
+		return me.Left.String()
+	}
+	// operator-based expression
+	return fmt.Sprintf("%s %s %s", me.Left.String(), me.Operator.Literal, me.Right.String())
 }
 
 type Condition struct {
