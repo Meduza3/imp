@@ -29,6 +29,8 @@ const (
 
 	OpParam Op = "param"
 	OpCall  Op = "call"
+
+	OpHalt Op = "halt"
 )
 
 type Instruction struct {
@@ -64,6 +66,9 @@ func (ins Instruction) String() string {
 
 	case OpRead, OpWrite, OpParam, OpCall:
 		return fmt.Sprintf("%s %s", ins.Op, ins.Arg1)
+
+	case OpHalt:
+		return string(ins.Op)
 	default:
 		// Handle any unrecognized ops (or extend this switch to cover other cases)
 		return fmt.Sprintf("Unknown instruction (Op=%q, Dest=%s, Arg1=%s, Arg2=%s)", ins.Op, ins.Destination, ins.Arg1, ins.Arg2)

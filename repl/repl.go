@@ -130,17 +130,17 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 	// // // }
 	g := tac.NewGenerator()
 	g.Generate(program)
-	symbolTable := g.GetSymbolTable()
-	for key, value := range symbolTable.ProcedureTables {
-		fmt.Printf("PROCEDURE %s\n", key)
-		for keyy, valuee := range value {
-			fmt.Printf("name=%q symbol=%v\n", keyy, valuee)
-		}
-	}
-	fmt.Printf("MAIN\n")
-	for key, value := range symbolTable.MainTable {
-		fmt.Printf("name=%q symbol=%v\n", key, value)
-	}
+	// symbolTable := g.GetSymbolTable()
+	// for key, value := range symbolTable.ProcedureTables {
+	// 	fmt.Printf("PROCEDURE %s\n", key)
+	// 	for keyy, valuee := range value {
+	// 		fmt.Printf("name=%q symbol=%v\n", keyy, valuee)
+	// 	}
+	// }
+	// fmt.Printf("MAIN\n")
+	// for key, value := range symbolTable.MainTable {
+	// 	fmt.Printf("name=%q symbol=%v\n", key, value)
+	// }
 
 	for _, instr := range g.Instructions {
 		fmt.Println(instr.String())

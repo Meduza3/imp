@@ -67,6 +67,9 @@ func (g *Generator) Generate(node ast.Node) error {
 		if node.Main != nil {
 			g.Generate(node.Main)
 		}
+		g.emit(Instruction{
+			Op: OpHalt,
+		})
 
 	case *ast.Procedure:
 		g.emit(Instruction{Label: node.ProcHead.Name.Value})
@@ -246,7 +249,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			Arg1: procName, // the procedure label/name
 			Arg2: fmt.Sprintf("%d", numArgs),
 		})
-		
+
 	case *ast.RepeatCommand:
 		labelStart := g.newLabel()
 		labelEnd := g.newLabel()
