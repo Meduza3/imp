@@ -1,6 +1,9 @@
 package tac
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Op string
 
@@ -30,6 +33,7 @@ const (
 	OpParam Op = "param"
 	OpCall  Op = "call"
 
+	OpRet  Op = "ret"
 	OpHalt Op = "halt"
 )
 
@@ -42,35 +46,36 @@ type Instruction struct {
 }
 
 func (ins Instruction) String() string {
+	var parts []string
 	if ins.Label != "" {
-		return fmt.Sprintf("%s:", ins.Label)
+		parts = append(parts, ins.Label+":")
 	}
-
 	switch ins.Op {
 	case OpAssign:
 		// For a direct assignment, we only need Destination = Arg1
 		// Example: "x = t1"
-		return fmt.Sprintf("%s = %s", ins.Destination, ins.Arg1)
+		parts = append(parts, fmt.Sprintf("%s = %s", ins.Destination, ins.Arg1))
 
 	case OpAdd, OpSub, OpMul, OpDiv, OpMod:
 		// For arithmetic, we use three-address style: Destination = Arg1 op Arg2
 		// Example: "t1 = x + y"
-		return fmt.Sprintf("%s = %s %s %s", ins.Destination, ins.Arg1, string(ins.Op), ins.Arg2)
+		parts = append(parts, fmt.Sprintf("%s = %s %s %s", ins.Destination, ins.Arg1, ins.Op, ins.Arg2))
 
 	case OpGoto:
-		return fmt.Sprintf("%s %s", ins.Op, ins.Destination)
+		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Destination))
 
 	// conditional jumps
 	case OpIfEQ, OpIfNE, OpIfLT, OpIfLE, OpIfGT, OpIfGE:
-		return fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1, ins.Arg2, ins.Destination)
+		parts = append(parts, fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1, ins.Arg2, ins.Destination))
 
 	case OpRead, OpWrite, OpParam, OpCall:
-		return fmt.Sprintf("%s %s", ins.Op, ins.Arg1)
+		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Arg1))
 
-	case OpHalt:
-		return string(ins.Op)
+	case OpHalt, OpRet:
+		parts = append(parts, string(ins.Op))
 	default:
 		// Handle any unrecognized ops (or extend this switch to cover other cases)
-		return fmt.Sprintf("Unknown instruction (Op=%q, Dest=%s, Arg1=%s, Arg2=%s)", ins.Op, ins.Destination, ins.Arg1, ins.Arg2)
+		parts = append(parts, fmt.Sprintf("Unknown instruction (Op=%q, Dest=%s, Arg1=%s, Arg2=%s)", ins.Op, ins.Destination, ins.Arg1, ins.Arg2))
 	}
+	return strings.Join(parts, " ")
 }

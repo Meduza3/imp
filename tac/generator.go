@@ -15,12 +15,16 @@ type Generator struct {
 
 	labelCount int
 	tempCount  int
+
+	currentMemoryOffset int
+	currentProc         string
 }
 
 func NewGenerator() *Generator {
 	return &Generator{
-		SymbolTable: symboltable.New(),
-		Errors:      make([]string, 0),
+		SymbolTable:         symboltable.New(),
+		Errors:              make([]string, 0),
+		currentMemoryOffset: 1,
 	}
 }
 
@@ -59,6 +63,7 @@ func opFromToken(tk ast.MathExpression) Op {
 func (g *Generator) Generate(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Program:
+		g.emit(Instruction{Op: OpGoto, Destination: "main"})
 		for _, procedure := range node.Procedures {
 			if procedure != nil {
 				g.Generate(procedure)
@@ -72,15 +77,18 @@ func (g *Generator) Generate(node ast.Node) error {
 		})
 
 	case *ast.Procedure:
+		oldProc := g.currentProc
+		g.currentProc = node.ProcHead.Name.Value // e.g. "de"
+
 		g.emit(Instruction{Label: node.ProcHead.Name.Value})
 		for _, decl := range node.ProcHead.ArgsDecl {
-			err := g.DeclareArgProcedure(decl, node.ProcHead.Name.Value)
+			err := g.DeclareArgProcedure(decl, g.currentProc)
 			if err != nil {
 				g.Errors = append(g.Errors, err.Error())
 			}
 		}
 		for _, decl := range node.Declarations {
-			err := g.DeclareProcedure(decl, node.ProcHead.Name.Value)
+			err := g.DeclareProcedure(decl, g.currentProc)
 			if err != nil {
 				g.Errors = append(g.Errors, err.Error())
 			}
@@ -91,7 +99,11 @@ func (g *Generator) Generate(node ast.Node) error {
 				g.Errors = append(g.Errors, err.Error())
 			}
 		}
+		g.emit(Instruction{Op: OpRet})
+		g.currentProc = oldProc
 	case *ast.Main:
+		oldProc := g.currentProc
+		g.currentProc = "main"
 		g.emit(Instruction{Label: "main"})
 		for _, decl := range node.Declarations {
 			err := g.DeclareMain(decl)
@@ -106,6 +118,7 @@ func (g *Generator) Generate(node ast.Node) error {
 				g.Errors = append(g.Errors, err.Error())
 			}
 		}
+		g.currentProc = oldProc
 	case *ast.AssignCommand:
 		// 1. Generate a place (temp or variable) for the right-hand side
 		place, err := g.generateMathExpression(&node.MathExpression)
@@ -115,16 +128,19 @@ func (g *Generator) Generate(node ast.Node) error {
 		}
 
 		// 2. Emit a final assignment: identifier = place
+		qualifiedDest := g.qualifyVar(node.Identifier.String())
 		g.emit(Instruction{
 			Op:          OpAssign,
-			Destination: node.Identifier.String(),
+			Destination: qualifiedDest,
 			Arg1:        place,
 			Arg2:        "", // Not needed for a pure assignment
 		})
 	case *ast.WriteCommand:
-		g.emit(Instruction{Op: OpWrite, Arg1: node.Value.String()})
+		val := g.qualifyVarOrNumber(node.Value.String())
+		g.emit(Instruction{Op: OpWrite, Arg1: val})
 	case *ast.ReadCommand:
-		g.emit(Instruction{Op: OpRead, Arg1: node.Identifier.Value})
+		ident := g.qualifyVar(node.Identifier.Value)
+		g.emit(Instruction{Op: OpRead, Arg1: ident})
 	case *ast.WhileCommand:
 		labelStart := g.newLabel() // e.g. "L1"
 		labelBody := g.newLabel()  // e.g. "L2"
@@ -321,6 +337,88 @@ func (g *Generator) Generate(node ast.Node) error {
 	return nil
 }
 
+// This helper qualifies either a plain identifier "a" => "currentProc.a",
+// or an array "arr[i]" => "currentProc.arr[i]" if your language uses that approach.
+func (g *Generator) qualifyVar(plainName string) string {
+	// If plainName is something like "x", we do "proc.x"
+	// If it already has a dot, or is a temp or number, skip.
+	// But since your code calls this only for actual variables, we can do:
+	if plainName == "" {
+		return "" // safety
+	}
+	// If it’s already got ".", or is "t1", just return it as-is
+	if hasDot(plainName) || isTemp(plainName) || isNumber(plainName) {
+		return plainName
+	}
+	// Otherwise prepend currentProc + "."
+	return g.currentProc + "." + plainName
+}
+
+// If it’s a number, we keep it as-is. Otherwise qualify it.
+func (g *Generator) qualifyVarOrNumber(s string) string {
+	if isNumber(s) || isTemp(s) {
+		return s
+	}
+	return g.qualifyVar(s)
+}
+
+func isNumber(str string) bool {
+	_, err := strconv.Atoi(str)
+	return (err == nil)
+}
+
+func isTemp(str string) bool {
+	return len(str) > 0 && str[0] == 't'
+}
+
+func hasDot(str string) bool {
+	return len(str) > 0 && func() bool {
+		for i := range str {
+			if str[i] == '.' {
+				return true
+			}
+		}
+		return false
+	}()
+}
+
+func MergeLabelOnlyInstructions(inss []Instruction) []Instruction {
+	var result []Instruction
+	i := 0
+	for i < len(inss) {
+		ins := inss[i]
+
+		// Check if this instruction is label-only (no Op, no Arg1/Arg2/Destination).
+		// In your code, you might also check if Op is some default/no-op, etc.
+		if ins.Label != "" && ins.Op == "" {
+			// We have a label-only instruction. We want to merge it with the NEXT instruction,
+			// provided there *is* a next instruction.
+			if i+1 < len(inss) {
+				next := inss[i+1]
+				// Prepend this label to the next instruction's label (if any).
+				// Typically you only have one label, but you could combine if you wanted.
+				if next.Label == "" {
+					next.Label = ins.Label
+				} else {
+					// If the next instruction also had a label, you can decide how to combine.
+					// For simplicity, we'll just join them with a semicolon or space.
+					next.Label = ins.Label + " " + next.Label
+				}
+				// Replace the next instruction in the list
+				inss[i+1] = next
+			}
+			// Skip this instruction (label-only), don’t add it to `result`
+			i++
+		} else {
+			// Normal instruction (or an instruction that *also* has a label+operation)
+			// Keep it as is.
+			result = append(result, ins)
+			i++
+		}
+	}
+	return result
+}
+
 func (g *Generator) generateCondition(cond ast.Condition, labelTrue, labelFalse string) error {
 	// 1. Generate code for left and right
 	left, err := g.generateValue(cond.Left)
@@ -386,7 +484,7 @@ func (g *Generator) generateValue(v ast.Value) (string, error) {
 
 	case *ast.Identifier:
 		// Return something like "x" or "x[i]" if you track arrays
-		return val.String(), nil
+		return g.qualifyVar(val.Value), nil
 
 	default:
 		return "", fmt.Errorf("unhandled Value type %T", v)
@@ -442,30 +540,36 @@ func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error
 		Name:    name,
 		Kind:    symboltable.ARGUMENT,
 		IsTable: isTable,
+		Address: g.currentMemoryOffset,
 	}
 	err := g.SymbolTable.DeclareProcedure(name, procName, symbol)
 	if err != nil {
-		return fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName)
+		return fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName, err)
 	}
+	g.currentMemoryOffset++
 	return nil
 }
 
 func (g *Generator) DeclareProcedure(decl ast.Declaration, procName string) error {
 	name := decl.Pidentifier.Value
 	symbol := symboltable.Symbol{
-		Name: name,
-		Kind: symboltable.DECLARATION,
+		Name:    name,
+		Kind:    symboltable.DECLARATION,
+		Address: g.currentMemoryOffset,
 	}
 	err := g.SymbolTable.DeclareProcedure(name, procName, symbol)
 	if err != nil {
-		return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName)
+		return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName, err)
 	}
+
+	g.currentMemoryOffset++
 	return nil
 }
 
 func (g *Generator) DeclareMain(decl ast.Declaration) error {
 	name := decl.Pidentifier.Value
 	var symbol symboltable.Symbol
+	var nextMemory int
 	if decl.IsTable {
 		from, err := strconv.Atoi(decl.From.Value)
 		if err != nil {
@@ -481,17 +585,22 @@ func (g *Generator) DeclareMain(decl ast.Declaration) error {
 			IsTable: true,
 			From:    from,
 			To:      to,
-			Size:    to - from,
+			Size:    to - from + 1,
+			Address: g.currentMemoryOffset,
 		}
+		nextMemory = g.currentMemoryOffset + symbol.Size
 	} else {
 		symbol = symboltable.Symbol{
-			Name: name,
-			Kind: symboltable.DECLARATION,
+			Name:    name,
+			Kind:    symboltable.DECLARATION,
+			Address: g.currentMemoryOffset,
 		}
+		nextMemory = g.currentMemoryOffset + 1
 	}
 	err := g.SymbolTable.DeclareMain(name, symbol)
 	if err != nil {
 		return fmt.Errorf("failed to declare in main: %v", err)
 	}
+	g.currentMemoryOffset = nextMemory
 	return nil
 }

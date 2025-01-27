@@ -10,6 +10,7 @@ import (
 	"github.com/Meduza3/imp/lexer"
 	"github.com/Meduza3/imp/parser"
 	"github.com/Meduza3/imp/tac"
+	"github.com/Meduza3/imp/translator"
 )
 
 const PROMPT = ">:] imp>"
@@ -130,21 +131,47 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 	// // // }
 	g := tac.NewGenerator()
 	g.Generate(program)
-	// symbolTable := g.GetSymbolTable()
-	// for key, value := range symbolTable.ProcedureTables {
-	// 	fmt.Printf("PROCEDURE %s\n", key)
-	// 	for keyy, valuee := range value {
-	// 		fmt.Printf("name=%q symbol=%v\n", keyy, valuee)
-	// 	}
-	// }
-	// fmt.Printf("MAIN\n")
-	// for key, value := range symbolTable.MainTable {
-	// 	fmt.Printf("name=%q symbol=%v\n", key, value)
-	// }
-
-	for _, instr := range g.Instructions {
-		fmt.Println(instr.String())
+	g.Instructions = tac.MergeLabelOnlyInstructions(g.Instructions)
+	symbolTable := g.GetSymbolTable()
+	for key, value := range symbolTable.ProcedureTables {
+		fmt.Printf("PROCEDURE %s\n", key)
+		for keyy, valuee := range value {
+			fmt.Printf("name=%q symbol=%v\n", keyy, valuee)
+		}
 	}
+	fmt.Printf("MAIN\n")
+	for key, value := range symbolTable.MainTable {
+		fmt.Printf("name=%q symbol=%v\n", key, value)
+	}
+	blocks := tac.SplitIntoBasicBlocks(g.Instructions)
+	blocks = tac.BuildFlowGraph(blocks)
+	// for _, block := range blocks {
+	// 	fmt.Printf("Block %d connections:\n", block.ID)
+	// 	fmt.Printf("  Predecessors: %v\n", tac.GetBlockIDs(block.Predecessors))
+	// 	fmt.Printf("  Successors: %v\n", tac.GetBlockIDs(block.Successors))
+	// }
+	line := 0
+	for _, block := range blocks {
+		fmt.Println()
+		fmt.Printf("Block %d\n", block.ID)
+		for _, instr := range block.Instructions {
+			fmt.Printf("%03d: %s\n", line, instr.String())
+			line++
+		}
+	}
+	translator := translator.New(*g.SymbolTable)
+	for key, value := range translator.St.MainTable {
+		fmt.Printf("%s: %v\n", key, value)
+	}
+	for _, table := range translator.St.ProcedureTables {
+		for key, value := range table {
+			fmt.Printf("%s: %v\n", key, value)
+		}
+	}
+	// translator.Translate(g.Instructions)
+	// for _, instr := range translator.Output {
+	// 	fmt.Println(instr)
+	// }
 }
 
 func StartFile(filepath string, out io.Writer) {

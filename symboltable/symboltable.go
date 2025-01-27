@@ -18,6 +18,7 @@ type Symbol struct {
 	Name    string
 	Kind    SymbolKind
 	IsTable bool
+	Address int
 	From    int
 	To      int
 	Size    int

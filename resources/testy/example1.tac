@@ -1,67 +1,87 @@
-de:
-a = m
-b = n
-x = 1
-y = 0
-r = n
-t1 = m - 1
-s = t1
-L1:
-if> b, 0 goto L2
-goto L3
-L2:
-t2 = a % b
-reszta = t2
-t3 = a / b
-iloraz = t3
-a = b
-b = reszta
-rr = r
-t4 = iloraz * r
-tmp = t4
-if< x, tmp goto L4
-goto L6
-L4:
-t5 = n * iloraz
-r = t5
-goto L5
-L6:
-r = 0
-L5:
-t6 = r + x
-r = t6
-t7 = r - tmp
-r = t7
-ss = s
-t8 = iloraz * s
-tmp = t8
-if< y, tmp goto L7
-goto L9
-L7:
-t9 = m * iloraz
-s = t9
-goto L8
-L9:
-s = 0
-L8:
-t10 = s + y
-s = t10
-t11 = s - tmp
-s = t11
-x = rr
-y = ss
-goto L1
-L3:
-z = a
-main:
-read m
-read n
-param m
-param n
-param x
-param y
-param nwd
-call de
-write x
-write y
-write nwd
+Block 0
+000: de: a = m
+001: b = n
+002: x = 1
+003: y = 0
+004: r = n
+005: t1 = m - 1
+006: s = t1
+
+Block 1
+007: L1: if> b, 0 goto L2
+
+Block 2
+008: goto L3
+
+Block 3
+009: L2: t2 = a % b
+010: reszta = t2
+011: t3 = a / b
+012: iloraz = t3
+013: a = b
+014: b = reszta
+015: rr = r
+016: t4 = iloraz * r
+017: tmp = t4
+018: if< x, tmp goto L4
+
+Block 4
+019: goto L6
+
+Block 5
+020: L4: t5 = n * iloraz
+021: r = t5
+022: goto L5
+
+Block 6
+023: L6: r = 0
+
+Block 7
+024: L5: t6 = r + x
+025: r = t6
+026: t7 = r - tmp
+027: r = t7
+028: ss = s
+029: t8 = iloraz * s
+030: tmp = t8
+031: if< y, tmp goto L7
+
+Block 8
+032: goto L9
+
+Block 9
+033: L7: t9 = m * iloraz
+034: s = t9
+035: goto L8
+
+Block 10
+036: L9: s = 0
+
+Block 11
+037: L8: t10 = s + y
+038: s = t10
+039: t11 = s - tmp
+040: s = t11
+041: x = rr
+042: y = ss
+043: goto L1
+
+Block 12
+044: L3: z = a
+045: ret
+
+Block 13
+046: main: read m
+047: read n
+048: param m
+049: param n
+050: param x
+051: param y
+052: param nwd
+053: call de
+
+Block 14
+054: write x
+055: write y
+056: write nwd
+057: halt
