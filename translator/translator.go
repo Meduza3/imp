@@ -3,6 +3,7 @@ package translator
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/Meduza3/imp/symboltable"
 	"github.com/Meduza3/imp/tac"
@@ -16,6 +17,7 @@ type Translator struct {
 	currentAddress int
 	procEntries    map[string]int // Adresy początków procedur
 	labels         map[string]int // Etykiety na adresy
+	errors         []string
 }
 
 func New(st symboltable.SymbolTable) *Translator {
@@ -23,27 +25,13 @@ func New(st symboltable.SymbolTable) *Translator {
 }
 
 func (t *Translator) Translate(tac []tac.Instruction) []string {
-	// Przejdź dwukrotnie - pierwsze przejście dla etykiet i procedur
-	t.firstPass(tac)
-	for label, address := range t.labels {
-		fmt.Printf("%s: %3d\n", label, address)
-	}
 
-	t.secondPass(tac)
+	t.firstPass(tac)
 
 	return t.Output
 }
 
-func (t *Translator) firstPass(instructions []tac.Instruction) {
-	for pc, ins := range instructions {
-		// Zapamiętaj adresy etykiet i procedur
-		if ins.Label != "" {
-			t.labels[ins.Label] = pc
-		}
-	}
-}
-
-func (t *Translator) secondPass(inss []tac.Instruction) {
+func (t *Translator) firstPass(inss []tac.Instruction) {
 	for _, ins := range inss {
 		// If this instruction has a label, you might record the final “machine code”
 		// address in a separate map, or emit a comment for readability:
@@ -79,15 +67,19 @@ func (t *Translator) secondPass(inss []tac.Instruction) {
 			t.handleIf(ins.Op, ins.Arg1, ins.Arg2, ins.Destination)
 		case tac.OpRead:
 			// read var
-			addr := t.getAddr(ins.Arg1) // e.g. "main.x"
+			addr, err := t.getAddr(ins.Arg1)
+			if err != nil {
+				t.errors = append(t.errors, fmt.Sprintf("failed to read OpRead ins: %v", err))
+			}
 			// emit "GET addr"
 			t.emit(fmt.Sprintf("GET %d", addr))
 
 		case tac.OpWrite:
 			// write var
-			// If Arg1 is numeric, you must do the trick of storing it somewhere
-			// but usually you only `WRITE var`.
-			addr := t.getAddr(ins.Arg1)
+			addr, err := t.getAddr(ins.Arg1)
+			if err != nil {
+				t.errors = append(t.errors, fmt.Sprintf("failed to read OpWrite ins: %v", err))
+			}
 			t.emit(fmt.Sprintf("PUT %d", addr))
 		//----------------------------------------------------------------------
 		// 3) TODO: Multiplication, Division, Modulo expansions
@@ -106,20 +98,23 @@ func isNumber(num string) bool {
 	return true
 }
 
-func (t *Translator) handleAssign(dest, src string) {
-	destAddr := t.getAddr(dest)
+func (t *Translator) handleAssign(dest, src string) error {
 
-	// If src is a *number*, do p0 := constant, else p0 := p_src
-	if isNumber(src) {
-		// e.g. "5"
-		t.emit(fmt.Sprintf("SET %s", src)) // p0 = 5
-	} else {
-		srcAddr := t.getAddr(src)
-		t.emit(fmt.Sprintf("LOAD %d", srcAddr)) // p0 = p_src
+	destAddr, err := t.getAddr(dest)
+	if err != nil {
+		return fmt.Errorf("failed to get destination address: %v", err)
 	}
+
+	srcAddr, err := t.getAddr(src)
+	if err != nil {
+		return fmt.Errorf("failed to get source address: %v", err)
+	}
+
+	t.emit(fmt.Sprintf("LOAD %d", srcAddr)) // p0 = p_src
 
 	// Now store p0 into p_dest
 	t.emit(fmt.Sprintf("STORE %d", destAddr)) // p_dest = p0
+	return nil
 }
 
 func (t *Translator) handleGoto(labelName string) {
@@ -128,7 +123,7 @@ func (t *Translator) handleGoto(labelName string) {
 	t.emit(fmt.Sprintf("JUMP %s", labelName))
 }
 
-func (t *Translator) handleIf(op tac.Op, left, right, labelName string) {
+func (t *Translator) handleIf(op tac.Op, left, right, labelName string) error {
 	// Typically we do:
 	//   LOAD left
 	//   SUB right
@@ -139,7 +134,11 @@ func (t *Translator) handleIf(op tac.Op, left, right, labelName string) {
 		leftTemp := t.ensureConst(left)
 		t.emit(fmt.Sprintf("LOAD %d", leftTemp))
 	} else {
-		t.emit(fmt.Sprintf("LOAD %d", t.getAddr(left)))
+		leftAddr, err := t.getAddr((left))
+		if err != nil {
+			return fmt.Errorf("failed to get left addr: %v", err)
+		}
+		t.emit(fmt.Sprintf("LOAD %d", leftAddr))
 	}
 
 	// 2) SUB p0 -= right
@@ -147,7 +146,11 @@ func (t *Translator) handleIf(op tac.Op, left, right, labelName string) {
 		rightTemp := t.ensureConst(right)
 		t.emit(fmt.Sprintf("SUB %d", rightTemp))
 	} else {
-		t.emit(fmt.Sprintf("SUB %d", t.getAddr(right)))
+		rightAddr, err := t.getAddr((left))
+		if err != nil {
+			return fmt.Errorf("failed to get right addr: %v", err)
+		}
+		t.emit(fmt.Sprintf("SUB %d", rightAddr))
 	}
 
 	// 3) Jump if condition is satisfied
@@ -196,6 +199,7 @@ func (t *Translator) handleIf(op tac.Op, left, right, labelName string) {
 		// place skipLabel:
 		t.emit(fmt.Sprintf("# %s:", skipLabel))
 	}
+	return nil
 }
 
 func (t *Translator) newLocalLabel() string {
@@ -208,10 +212,13 @@ func (v *Translator) emit(code string) {
 	v.currentAddress++
 }
 
-func (t *Translator) handleAddSub(op tac.Op, dest, left, right string) {
+func (t *Translator) handleAddSub(op tac.Op, dest, left, right string) error {
 	// Example:  x = a + b  =>  LOAD a;  ADD b;  STORE x
 	// or        x = a - b  =>  LOAD a;  SUB b;  STORE x
-	destAddr := t.getAddr(dest)
+	destAddr, err := t.getAddr(dest)
+	if err != nil {
+		return fmt.Errorf("failed to get destAddres: %v", err)
+	}
 	// 1. Load left into p0.
 	if isNumber(left) {
 		// If left is literal, we must put it in p0 via SET, then store in a temp cell, then re-LOAD that cell
@@ -219,7 +226,11 @@ func (t *Translator) handleAddSub(op tac.Op, dest, left, right string) {
 		t.emit(fmt.Sprintf("LOAD %d", leftTemp))
 	} else {
 		// normal variable
-		t.emit(fmt.Sprintf("LOAD %d", t.getAddr(left)))
+		leftAddr, err := t.getAddr(left)
+		if err != nil {
+			return fmt.Errorf(("failed to get left address: %v"), err)
+		}
+		t.emit(fmt.Sprintf("LOAD %d", leftAddr))
 	}
 
 	// 2. Add/sub the right side
@@ -232,16 +243,19 @@ func (t *Translator) handleAddSub(op tac.Op, dest, left, right string) {
 		}
 	} else {
 		// normal variable
-		rightAddr := t.getAddr(right)
-		if op == tac.OpAdd {
-			t.emit(fmt.Sprintf("ADD %d", rightAddr))
-		} else {
-			t.emit(fmt.Sprintf("SUB %d", rightAddr))
+		rightAddr, err := t.getAddr(right)
+		if err != nil {
+			if op == tac.OpAdd {
+				t.emit(fmt.Sprintf("ADD %d", rightAddr))
+			} else {
+				t.emit(fmt.Sprintf("SUB %d", rightAddr))
+			}
 		}
 	}
 
 	// 3. Store p0 into dest
 	t.emit(fmt.Sprintf("STORE %d", destAddr))
+	return nil
 }
 
 func (t *Translator) ensureConst(num string) int {
@@ -266,6 +280,20 @@ func (t *Translator) ensureConst(num string) int {
 	return newAddr
 }
 
-func (t *Translator) getAddr(name string) int {
-	panic(fmt.Sprintf("No address known for %q, and it is not recognized as a temp", name))
+func (t *Translator) getAddr(name string) (int, error) {
+	_, err := strconv.Atoi(name)
+	if err != nil {
+		symbol, err := t.St.Lookup(name, "main")
+		if err != nil {
+			return 0, fmt.Errorf("failed to find addr for %q: %v", name, err)
+		}
+		return symbol.Address, nil
+	} else {
+		parts := strings.Split(name, ".")
+		symbol, err := t.St.Lookup(parts[1], parts[0])
+		if err != nil {
+			return 0, fmt.Errorf("failed to find addr for %q: %v", name, err)
+		}
+		return symbol.Address, nil
+	}
 }

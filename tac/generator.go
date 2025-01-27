@@ -66,11 +66,11 @@ func (g *Generator) Generate(node ast.Node) error {
 		g.emit(Instruction{Op: OpGoto, Destination: "main"})
 		for _, procedure := range node.Procedures {
 			if procedure != nil {
-				g.Generate(procedure)
+				_ = g.Generate(procedure)
 			}
 		}
 		if node.Main != nil {
-			g.Generate(node.Main)
+			_ = g.Generate(node.Main)
 		}
 		g.emit(Instruction{
 			Op: OpHalt,
@@ -79,7 +79,7 @@ func (g *Generator) Generate(node ast.Node) error {
 	case *ast.Procedure:
 		oldProc := g.currentProc
 		g.currentProc = node.ProcHead.Name.Value // e.g. "de"
-
+		g.SymbolTable.Declare(g.currentProc, "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc, Kind: symboltable.PROCEDURE, ArgCount: len(node.ProcHead.ArgsDecl)})
 		g.emit(Instruction{Label: node.ProcHead.Name.Value})
 		for _, decl := range node.ProcHead.ArgsDecl {
 			err := g.DeclareArgProcedure(decl, g.currentProc)
@@ -252,19 +252,34 @@ func (g *Generator) Generate(node ast.Node) error {
 	case *ast.ProcCallCommand:
 		for _, arg := range node.Args {
 			argName := arg.String()
-			g.emit(Instruction{
-				Op:   OpParam,
-				Arg1: argName,
-			})
+			symbol, err := g.SymbolTable.Lookup(argName, g.currentProc)
+			if err == nil {
+				g.emit(Instruction{
+					Op:   OpParam,
+					Arg1: g.qualifyVarOrNumber(argName),
+					Arg2: fmt.Sprintf("%d", symbol.ArgCount),
+				})
+			} else {
+				fmt.Printf("failed calling %s: %v\n", argName, err)
+				return fmt.Errorf("failed calling %s: %v", argName, err)
+			}
 		}
 
 		procName := node.Name.String()
 		numArgs := len(node.Args)
-		g.emit(Instruction{
-			Op:   OpCall,
-			Arg1: procName, // the procedure label/name
-			Arg2: fmt.Sprintf("%d", numArgs),
-		})
+		_, err := g.SymbolTable.Lookup(procName, "xxFunctionsxx")
+		if err == nil {
+			g.emit(Instruction{
+				Op:   OpCall,
+				Arg1: procName, // the procedure label/name
+				Arg2: fmt.Sprintf("%d", numArgs),
+			})
+		} else {
+			fmt.Printf("failed calling %s: %v\n", procName, err)
+
+			return fmt.Errorf("failed calling %s: %v", procName, err)
+
+		}
 
 	case *ast.RepeatCommand:
 		labelStart := g.newLabel()
@@ -480,6 +495,11 @@ func (g *Generator) generateValue(v ast.Value) (string, error) {
 	switch val := v.(type) {
 	case *ast.NumberLiteral:
 		// Return the integer text directly
+		decl := ast.Declaration{Pidentifier: ast.Pidentifier{
+			Value: v.String(),
+		}}
+		g.SymbolTable.Declare(v.String(), "main", symboltable.Symbol{Name: v.String(), Kind: symboltable.CONSTANT})
+		g.DeclareMain(decl)
 		return val.String(), nil
 
 	case *ast.Identifier:
@@ -542,8 +562,9 @@ func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error
 		IsTable: isTable,
 		Address: g.currentMemoryOffset,
 	}
-	err := g.SymbolTable.DeclareProcedure(name, procName, symbol)
+	err := g.SymbolTable.Declare(name, procName, symbol)
 	if err != nil {
+		fmt.Printf("EEEE!!! %v\n", err)
 		return fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName, err)
 	}
 	g.currentMemoryOffset++
@@ -557,9 +578,12 @@ func (g *Generator) DeclareProcedure(decl ast.Declaration, procName string) erro
 		Kind:    symboltable.DECLARATION,
 		Address: g.currentMemoryOffset,
 	}
-	err := g.SymbolTable.DeclareProcedure(name, procName, symbol)
-	if err != nil {
-		return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName, err)
+	got, _ := g.SymbolTable.Lookup(name, procName)
+	if got == nil {
+		err := g.SymbolTable.Declare(name, procName, symbol)
+		if err != nil {
+			return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName, err)
+		}
 	}
 
 	g.currentMemoryOffset++
@@ -597,7 +621,7 @@ func (g *Generator) DeclareMain(decl ast.Declaration) error {
 		}
 		nextMemory = g.currentMemoryOffset + 1
 	}
-	err := g.SymbolTable.DeclareMain(name, symbol)
+	err := g.SymbolTable.Declare(name, "main", symbol)
 	if err != nil {
 		return fmt.Errorf("failed to declare in main: %v", err)
 	}

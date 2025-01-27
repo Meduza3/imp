@@ -68,7 +68,9 @@ func (ins Instruction) String() string {
 	case OpIfEQ, OpIfNE, OpIfLT, OpIfLE, OpIfGT, OpIfGE:
 		parts = append(parts, fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1, ins.Arg2, ins.Destination))
 
-	case OpRead, OpWrite, OpParam, OpCall:
+	case OpCall:
+		parts = append(parts, fmt.Sprintf("%s %s %s", ins.Op, ins.Arg1, ins.Arg2))
+	case OpRead, OpWrite, OpParam:
 		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Arg1))
 
 	case OpHalt, OpRet:

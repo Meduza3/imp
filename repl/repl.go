@@ -133,15 +133,11 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 	g.Generate(program)
 	g.Instructions = tac.MergeLabelOnlyInstructions(g.Instructions)
 	symbolTable := g.GetSymbolTable()
-	for key, value := range symbolTable.ProcedureTables {
+	for key, value := range symbolTable.Table {
 		fmt.Printf("PROCEDURE %s\n", key)
 		for keyy, valuee := range value {
 			fmt.Printf("name=%q symbol=%v\n", keyy, valuee)
 		}
-	}
-	fmt.Printf("MAIN\n")
-	for key, value := range symbolTable.MainTable {
-		fmt.Printf("name=%q symbol=%v\n", key, value)
 	}
 	blocks := tac.SplitIntoBasicBlocks(g.Instructions)
 	blocks = tac.BuildFlowGraph(blocks)
@@ -152,18 +148,15 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 	// }
 	line := 0
 	for _, block := range blocks {
-		fmt.Println()
-		fmt.Printf("Block %d\n", block.ID)
+		// fmt.Println()
+		// fmt.Printf("Block %d\n", block.ID)
 		for _, instr := range block.Instructions {
 			fmt.Printf("%03d: %s\n", line, instr.String())
 			line++
 		}
 	}
 	translator := translator.New(*g.SymbolTable)
-	for key, value := range translator.St.MainTable {
-		fmt.Printf("%s: %v\n", key, value)
-	}
-	for _, table := range translator.St.ProcedureTables {
+	for _, table := range translator.St.Table {
 		for key, value := range table {
 			fmt.Printf("%s: %v\n", key, value)
 		}
