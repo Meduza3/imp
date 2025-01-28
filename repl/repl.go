@@ -133,6 +133,7 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 	g.Generate(program)
 	g.Instructions = tac.MergeLabelOnlyInstructions(g.Instructions)
 	symbolTable := g.GetSymbolTable()
+	fmt.Println("==SYMBOL TABLE==")
 	for key, value := range symbolTable.Table {
 		fmt.Printf("PROCEDURE %s\n", key)
 		for keyy, valuee := range value {
@@ -161,10 +162,14 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 			fmt.Printf("%s: %v\n", key, value)
 		}
 	}
-	// translator.Translate(g.Instructions)
-	// for _, instr := range translator.Output {
-	// 	fmt.Println(instr)
-	// }
+	fmt.Println("TRANSLATED: ")
+	translator.Translate(g.Instructions)
+	for _, instr := range translator.Output {
+		fmt.Println(instr.String())
+	}
+	for _, err := range translator.Errors() {
+		fmt.Println(err)
+	}
 }
 
 func StartFile(filepath string, out io.Writer) {

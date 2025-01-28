@@ -39,6 +39,11 @@ func (g *Generator) newLabel() string {
 
 func (g *Generator) newTemp() string {
 	g.tempCount++
+	name := fmt.Sprintf("t%d", g.tempCount)
+	g.SymbolTable.Declare(name, g.currentProc, symboltable.Symbol{
+		Name: name,
+		Kind: symboltable.TEMP,
+	})
 	return fmt.Sprintf("t%d", g.tempCount)
 }
 
@@ -80,6 +85,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		oldProc := g.currentProc
 		g.currentProc = node.ProcHead.Name.Value // e.g. "de"
 		g.SymbolTable.Declare(g.currentProc, "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc, Kind: symboltable.PROCEDURE, ArgCount: len(node.ProcHead.ArgsDecl)})
+		g.SymbolTable.Declare(g.currentProc+"_return", "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc + "_return", Kind: symboltable.RETURNADDR})
 		g.emit(Instruction{Label: node.ProcHead.Name.Value})
 		for _, decl := range node.ProcHead.ArgsDecl {
 			err := g.DeclareArgProcedure(decl, g.currentProc)
@@ -597,7 +603,7 @@ func (g *Generator) DeclareMain(decl ast.Declaration) error {
 	if decl.IsTable {
 		from, err := strconv.Atoi(decl.From.Value)
 		if err != nil {
-			return fmt.Errorf("failed parsing from value in main declaration %v. value:", decl, decl.From.Value)
+			return fmt.Errorf("failed parsing from value in main declaration %v. value: %s", decl, decl.From.Value)
 		}
 		to, err := strconv.Atoi(decl.To.Value)
 		if err != nil {

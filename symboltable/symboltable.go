@@ -14,6 +14,8 @@ const (
 	ARGUMENT    SymbolKind = "ARGUMENT"
 	PROCEDURE   SymbolKind = "PROCEDURE"
 	CONSTANT    SymbolKind = "CONSTANT"
+	RETURNADDR  SymbolKind = "RETURNADDR"
+	TEMP        SymbolKind = "TEMP"
 )
 
 type Symbol struct {
