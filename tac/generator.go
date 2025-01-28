@@ -173,6 +173,7 @@ func (g *Generator) Generate(node ast.Node) error {
 
 	case *ast.ForCommand:
 		iteratorName := node.Iterator.Value
+		g.SymbolTable.Declare(iteratorName, g.currentProc, symboltable.Symbol{Name: iteratorName, Kind: symboltable.DECLARATION})
 
 		startVal := node.From.String()
 		endVal := node.To.String()
@@ -560,13 +561,20 @@ func (g *Generator) emit(ins Instruction) {
 }
 
 func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error {
+	var argCount = 0
+	for _, symbol := range g.GetSymbolTable().Table[procName] {
+		if symbol.Kind == symboltable.ARGUMENT {
+			argCount++
+		}
+	}
 	name := decl.Name.Value
 	isTable := decl.IsTable
 	symbol := symboltable.Symbol{
-		Name:    name,
-		Kind:    symboltable.ARGUMENT,
-		IsTable: isTable,
-		Address: g.currentMemoryOffset,
+		Name:          name,
+		Kind:          symboltable.ARGUMENT,
+		IsTable:       isTable,
+		Address:       g.currentMemoryOffset,
+		ArgumentIndex: argCount + 1,
 	}
 	err := g.SymbolTable.Declare(name, procName, symbol)
 	if err != nil {

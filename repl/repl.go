@@ -164,8 +164,10 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 	}
 	fmt.Println("TRANSLATED: ")
 	translator.Translate(g.Instructions)
+	line = 0
 	for _, instr := range translator.Output {
-		fmt.Println(instr.String())
+		fmt.Printf("%03d: %s\n", line, instr.String())
+		line++
 	}
 	for _, err := range translator.Errors() {
 		fmt.Println(err)

@@ -19,14 +19,15 @@ const (
 )
 
 type Symbol struct {
-	Name     string
-	Kind     SymbolKind
-	ArgCount int
-	IsTable  bool
-	Address  int
-	From     int
-	To       int
-	Size     int
+	Name          string
+	Kind          SymbolKind
+	ArgCount      int
+	IsTable       bool
+	Address       int
+	From          int
+	To            int
+	Size          int
+	ArgumentIndex int
 }
 
 func New() *SymbolTable {
@@ -34,7 +35,7 @@ func New() *SymbolTable {
 	pt["main"] = make(map[string]Symbol)
 	return &SymbolTable{
 		Table:         pt,
-		CurrentOffset: 1,
+		CurrentOffset: 100,
 	}
 }
 func (st *SymbolTable) Declare(name, procedureName string, symbol Symbol) error {

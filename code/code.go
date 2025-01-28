@@ -65,11 +65,15 @@ type Instruction struct {
 	HasOperand  bool
 	Operand     int
 	Destination string
+	Label       string
 	Comment     string
 }
 
 func (i Instruction) String() string {
 	var string string
+	if i.Label != "" {
+		string += i.Label + ": "
+	}
 	if i.HasOperand {
 		string += i.Op + " " + fmt.Sprintf("%d", i.Operand)
 	} else {
