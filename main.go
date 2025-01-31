@@ -22,7 +22,7 @@ func main() {
 			os.Exit(1)
 		}
 		defer file.Close()
-		repl.StartGeneratingFile(file.Name(), os.Stdout) // Use the file as input
+		repl.StartFile(file.Name(), os.Stdout) // Use the file as input
 	} else {
 		repl.Start(os.Stdin, os.Stdout) // Default to standard input
 	}

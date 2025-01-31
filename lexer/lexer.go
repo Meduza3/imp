@@ -42,7 +42,15 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.newToken(token.COLON, ':')
 		}
 	case '-':
-		tok = l.newToken(token.MINUS, l.ch)
+		peeked := l.peekChar()
+		if isDigit(peeked) {
+			l.readChar() // consume the '-' so readNumber() starts with the digit
+			literal := "-" + l.readNumber()
+			tok = token.Token{Type: token.NUM, Literal: literal, Line: l.currentLine}
+			return tok
+		} else {
+			tok = l.newToken(token.MINUS, l.ch)
+		}
 	case '*':
 		tok = l.newToken(token.MULT, l.ch)
 	case '/':

@@ -16,6 +16,8 @@ const (
 	OpDiv Op = "/"
 	OpMod Op = "%"
 
+	OpLoadIndirect Op = "LOADI" // New opcode for loading from address
+
 	// New: unconditional jump
 	OpGoto Op = "goto"
 

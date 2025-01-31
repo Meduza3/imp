@@ -1,6 +1,6 @@
-#line 2 "lexer.cc"
+#line 1 "lexer.cc"
 
-#line 4 "lexer.cc"
+#line 3 "lexer.cc"
 
 #define  YY_INT_ALIGNED short int
 
@@ -520,8 +520,8 @@ char *yytext;
 #include "instructions.hh"
 
 int yylex();
+#line 523 "lexer.cc"
 #line 524 "lexer.cc"
-#line 525 "lexer.cc"
 
 #define INITIAL 0
 
@@ -738,7 +738,7 @@ YY_DECL
 	{
 #line 17 "lexer.l"
 
-#line 742 "lexer.cc"
+#line 741 "lexer.cc"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -927,7 +927,7 @@ YY_RULE_SETUP
 #line 41 "lexer.l"
 ECHO;
 	YY_BREAK
-#line 931 "lexer.cc"
+#line 930 "lexer.cc"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 

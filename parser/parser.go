@@ -86,11 +86,12 @@ func (p *Parser) parseMain() (*ast.Main, error) {
 }
 
 func (p *Parser) parsePidentifier() ast.Pidentifier {
-	// fmt.Printf("in parsePidentifier\n")
+	// fmt.Printf("in parsePidentifier Token=%s\n", p.curToken.Type)
 	pid := ast.Pidentifier{
 		Value: p.curToken.Literal,
 		Token: p.curToken,
 	}
+
 	p.nextToken()
 	return pid
 }
@@ -447,6 +448,7 @@ func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
 	if !p.curTokenIs(token.LPAREN) {
 		return nil, fmt.Errorf("line %d expected '(' got %s", p.curToken.Line, p.curToken.Type)
 	}
+
 	p.nextToken()
 	argsDecl, err := p.parseArgsDecl()
 	if err != nil {
@@ -475,7 +477,7 @@ func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
 	args = append(args, *arg)
 	for p.curTokenIs(token.COMMA) {
 		p.nextToken() // eat ','
-		if !p.curTokenIs(token.PIDENTIFIER) {
+		if !p.curTokenIs(token.PIDENTIFIER) && !p.curTokenIs(token.T) {
 			return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
 		}
 		arg, err := p.parseArgDecl()
@@ -488,6 +490,7 @@ func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
 }
 
 func (p *Parser) parseArgDecl() (*ast.ArgDecl, error) {
+
 	var arg ast.ArgDecl
 	if p.curTokenIs(token.T) {
 		arg.IsTable = true
@@ -542,6 +545,7 @@ func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
 			return nil, fmt.Errorf("parseIdentifier: expected a ']' , got %s", p.peekToken.Type)
 		}
 		p.nextToken()
+		// fmt.Println("token at the end: %v", p.curToken)
 	}
 	return identifier, nil
 }

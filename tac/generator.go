@@ -3,6 +3,7 @@ package tac
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/symboltable"
@@ -68,6 +69,7 @@ func opFromToken(tk ast.MathExpression) Op {
 func (g *Generator) Generate(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Program:
+		g.SymbolTable.Declare("1", "main", symboltable.Symbol{Name: "1", Kind: symboltable.CONSTANT})
 		g.emit(Instruction{Op: OpGoto, Destination: "main"})
 		for _, procedure := range node.Procedures {
 			if procedure != nil {
@@ -82,6 +84,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		})
 
 	case *ast.Procedure:
+
 		oldProc := g.currentProc
 		g.currentProc = node.ProcHead.Name.Value // e.g. "de"
 		g.SymbolTable.Declare(g.currentProc, "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc, Kind: symboltable.PROCEDURE, ArgCount: len(node.ProcHead.ArgsDecl)})
@@ -139,13 +142,15 @@ func (g *Generator) Generate(node ast.Node) error {
 			Op:          OpAssign,
 			Destination: qualifiedDest,
 			Arg1:        place,
-			Arg2:        "", // Not needed for a pure assignment
 		})
 	case *ast.WriteCommand:
 		val := g.qualifyVarOrNumber(node.Value.String())
+		if isNumber(val) {
+			g.SymbolTable.Declare(val, "main", symboltable.Symbol{Name: val, Kind: symboltable.CONSTANT})
+		}
 		g.emit(Instruction{Op: OpWrite, Arg1: val})
 	case *ast.ReadCommand:
-		ident := g.qualifyVar(node.Identifier.Value)
+		ident := g.qualifyVar(node.Identifier.String())
 		g.emit(Instruction{Op: OpRead, Arg1: ident})
 	case *ast.WhileCommand:
 		labelStart := g.newLabel() // e.g. "L1"
@@ -177,6 +182,19 @@ func (g *Generator) Generate(node ast.Node) error {
 
 		startVal := node.From.String()
 		endVal := node.To.String()
+		// TODO: this may be a table to check for being a table
+		_, err := strconv.Atoi(startVal)
+		if err == nil {
+			g.SymbolTable.Declare(startVal, "main", symboltable.Symbol{Name: startVal, Kind: symboltable.CONSTANT})
+		} else {
+			g.SymbolTable.Declare(startVal, g.currentProc, symboltable.Symbol{Name: startVal, Kind: symboltable.DECLARATION})
+		}
+		_, err = strconv.Atoi(endVal)
+		if err == nil {
+			g.SymbolTable.Declare(endVal, "main", symboltable.Symbol{Name: endVal, Kind: symboltable.CONSTANT})
+		} else {
+			g.SymbolTable.Declare(endVal, g.currentProc, symboltable.Symbol{Name: endVal, Kind: symboltable.DECLARATION})
+		}
 
 		labelTest := g.newLabel() // e.g. "L1"
 		labelBody := g.newLabel() // e.g. "L2"
@@ -368,12 +386,30 @@ func (g *Generator) qualifyVar(plainName string) string {
 	if plainName == "" {
 		return "" // safety
 	}
+	if strings.Contains(plainName, "[") {
+		idx := extractIndex(plainName)
+		_, err := strconv.Atoi(idx)
+		if err == nil {
+			g.SymbolTable.Declare(idx, "main", symboltable.Symbol{Kind: symboltable.CONSTANT, Name: idx})
+		}
+	}
 	// If it’s already got ".", or is "t1", just return it as-is
 	if hasDot(plainName) || isTemp(plainName) || isNumber(plainName) {
 		return plainName
 	}
 	// Otherwise prepend currentProc + "."
 	return g.currentProc + "." + plainName
+}
+
+func extractIndex(input string) string {
+	start := strings.Index(input, "[")
+	end := strings.LastIndex(input, "]")
+
+	if start == -1 || end == -1 || start+1 >= end {
+		return "" // Return empty if brackets are missing or invalid
+	}
+
+	return input[start+1 : end] // Extract content between [ and ]
 }
 
 // If it’s a number, we keep it as-is. Otherwise qualify it.
@@ -403,37 +439,39 @@ func hasDot(str string) bool {
 		return false
 	}()
 }
-
 func MergeLabelOnlyInstructions(inss []Instruction) []Instruction {
 	var result []Instruction
 	i := 0
 	for i < len(inss) {
 		ins := inss[i]
 
-		// Check if this instruction is label-only (no Op, no Arg1/Arg2/Destination).
-		// In your code, you might also check if Op is some default/no-op, etc.
-		if ins.Label != "" && ins.Op == "" {
-			// We have a label-only instruction. We want to merge it with the NEXT instruction,
-			// provided there *is* a next instruction.
+		// Check if it's really just a "label" line,
+		// i.e. it has a label and absolutely no other data.
+		isLabelOnly := (ins.Label != "" &&
+			ins.Op == "" &&
+			ins.Arg1 == "" &&
+			ins.Arg2 == "" &&
+			ins.Destination == "")
+
+		if isLabelOnly {
+			// Merge this label with the *next* instruction if one exists
 			if i+1 < len(inss) {
 				next := inss[i+1]
-				// Prepend this label to the next instruction's label (if any).
-				// Typically you only have one label, but you could combine if you wanted.
 				if next.Label == "" {
 					next.Label = ins.Label
 				} else {
-					// If the next instruction also had a label, you can decide how to combine.
-					// For simplicity, we'll just join them with a semicolon or space.
+					// If the next instruction also has a label, you could decide
+					// how to handle multiple labels. For simplicity, join them:
 					next.Label = ins.Label + " " + next.Label
 				}
-				// Replace the next instruction in the list
 				inss[i+1] = next
+			} else {
+				// If there's no “next” instruction, keep this label as a “no‐op.”
+				result = append(result, ins)
 			}
-			// Skip this instruction (label-only), don’t add it to `result`
 			i++
 		} else {
-			// Normal instruction (or an instruction that *also* has a label+operation)
-			// Keep it as is.
+			// Normal instruction or label+operation/args
 			result = append(result, ins)
 			i++
 		}
@@ -498,20 +536,30 @@ func mapConditionOp(op string) (Op, error) {
 // generateValue returns a string “place” for the given Value.
 // If it’s just a number literal or identifier, we can return the string directly.
 // If your language has array-index computations, you’d handle them here.
+// generateValue returns a string “place” for the given Value.
+// If it’s an array reference, it emits instructions to compute the address and load the value.
 func (g *Generator) generateValue(v ast.Value) (string, error) {
 	switch val := v.(type) {
 	case *ast.NumberLiteral:
-		// Return the integer text directly
-		decl := ast.Declaration{Pidentifier: ast.Pidentifier{
-			Value: v.String(),
-		}}
-		g.SymbolTable.Declare(v.String(), "main", symboltable.Symbol{Name: v.String(), Kind: symboltable.CONSTANT})
-		g.DeclareMain(decl)
-		return val.String(), nil
+		numStr := val.String()
+		// Declare the number as a constant
+		g.SymbolTable.Declare(numStr, "main", symboltable.Symbol{
+			Name: numStr,
+			Kind: symboltable.CONSTANT,
+		})
+		// If negative, also declare its absolute value
+		if strings.HasPrefix(numStr, "-") {
+			posVal := numStr[1:]
+			g.SymbolTable.Declare(posVal, "main", symboltable.Symbol{
+				Name: posVal,
+				Kind: symboltable.CONSTANT,
+			})
+		}
+		return numStr, nil
 
 	case *ast.Identifier:
-		// Return something like "x" or "x[i]" if you track arrays
-		return g.qualifyVar(val.Value), nil
+
+		return g.qualifyVar(val.String()), nil
 
 	default:
 		return "", fmt.Errorf("unhandled Value type %T", v)
@@ -578,7 +626,6 @@ func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error
 	}
 	err := g.SymbolTable.Declare(name, procName, symbol)
 	if err != nil {
-		fmt.Printf("EEEE!!! %v\n", err)
 		return fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName, err)
 	}
 	g.currentMemoryOffset++
@@ -610,12 +657,14 @@ func (g *Generator) DeclareMain(decl ast.Declaration) error {
 	var nextMemory int
 	if decl.IsTable {
 		from, err := strconv.Atoi(decl.From.Value)
+		g.SymbolTable.Declare(decl.From.Value, "main", symboltable.Symbol{Name: decl.From.Value, Kind: symboltable.CONSTANT})
 		if err != nil {
 			return fmt.Errorf("failed parsing from value in main declaration %v. value: %s", decl, decl.From.Value)
 		}
 		to, err := strconv.Atoi(decl.To.Value)
+		g.SymbolTable.Declare(decl.To.Value, "main", symboltable.Symbol{Name: decl.To.Value, Kind: symboltable.CONSTANT})
 		if err != nil {
-			return fmt.Errorf("failed parsing to value in main declaration %v. value:", decl, decl.To.Value)
+			return fmt.Errorf("failed parsing to value in main declaration %v. value: %s", decl, decl.To.Value)
 		}
 		symbol = symboltable.Symbol{
 			Name:    name,

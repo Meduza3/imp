@@ -1,0 +1,88 @@
+# reading file
+# parsing program...		parsed. 
+# generating TAC...		generated. 
+# Translating TAC...		
+# ins:  goto main
+# ins:  proc: t1 = t[10] + t[11]
+# ins:  proc.x = t1
+# ins:  write proc.x
+# ins:  ret
+# ins:  main: t[10] = 123
+# ins:  t[11] = 2
+# ins:  param t
+# ins:  call proc 1
+# ins:  halt
+SET 2 # declaring constant 2
+STORE 137
+SET 1 # declaring constant 1
+STORE 100
+SET 10 # declaring constant 10
+STORE 105
+SET 11 # declaring constant 11
+STORE 106
+SET -10 # declaring constant -10
+STORE 108
+SET 15 # declaring constant 15
+STORE 109
+SET 123 # declaring constant 123
+STORE 136
+JUMP 17 # goto main
+LOAD 105 # load index 10 for array t
+ADD 103 # add base address 103 for array t
+STORE 138 # store computed address into temp cell
+LOADI 138 # load t[10] into ACC
+LOAD 106 # load index 11 for array t
+ADD 103 # add base address 103 for array t
+STORE 139 # store computed address into temp cell
+LOADI 139 # load t[11] into ACC
+STORE 140 # store right operand value into temp
+LOAD 140 # load temp right operand into ACC
+ADD 140 # add t[11]
+STORE 107 # store ACC into t1
+LOAD 107 # load t1 into ACC
+STORE 104 # store ACC into proc.x
+PUT 104 # write proc.x
+RTRN 102 # ret
+LOAD 136 # load 123 into ACC
+STORE 70 # store ACC into tempValue
+LOAD 105 # load index variable 10
+SUB 108 # subtract array.from (-10) for t
+ADD 110 # add base address (110) for t
+STORE 69 # store computed address into pointerCell
+LOAD 70 # load preserved value from tempValue into ACC
+STOREI 69 # store ACC into t[10]
+LOAD 137 # load 2 into ACC
+STORE 70 # store ACC into tempValue
+LOAD 106 # load index variable 11
+SUB 108 # subtract array.from (-10) for t
+ADD 110 # add base address (110) for t
+STORE 69 # store computed address into pointerCell
+LOAD 70 # load preserved value from tempValue into ACC
+STOREI 69 # store ACC into t[11]
+SET 110 # param t
+STORE 141
+LOAD 103 # call proc 1
+STORE 103
+SET 54
+STORE 102
+JUMP -53
+HALT # halt
+# ==main==
+# t = {t DECLARATION 110 true -10 15 26 0 0}
+# 123 = {123 CONSTANT 136 false 0 0 0 0 0}
+# 2 = {2 CONSTANT 137 false 0 0 0 0 0}
+# 1 = {1 CONSTANT 100 false 0 0 0 0 0}
+# 10 = {10 CONSTANT 105 false 0 0 0 0 0}
+# 11 = {11 CONSTANT 106 false 0 0 0 0 0}
+# -10 = {-10 CONSTANT 108 false 0 0 0 0 0}
+# 15 = {15 CONSTANT 109 false 0 0 0 0 0}
+# ==xxFunctionsxx==
+# proc = {proc PROCEDURE 101 false 0 0 0 0 1}
+# proc_return = {proc_return RETURNADDR 102 false 0 0 0 0 0}
+# ==proc==
+# x = {x DECLARATION 104 false 0 0 0 0 0}
+# t1 = {t1 TEMP 107 false 0 0 0 0 0}
+# temp1 = {temp1 TEMP 138 false 0 0 0 0 0}
+# temp2 = {temp2 TEMP 139 false 0 0 0 0 0}
+# temp3 = {temp3 TEMP 140 false 0 0 0 0 0}
+# t = {t ARGUMENT 103 true 0 0 0 1 0}

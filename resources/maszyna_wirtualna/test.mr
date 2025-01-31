@@ -1,0 +1,46 @@
+SET 1 # declaring constant 1
+STORE 100
+SET 1 # declaring constant 1
+STORE 110
+JUMP 21 # goto main
+LOAD 100 # i = 1
+STORE 106
+JUMP 1 # goto L1
+LOAD 106 # if<= i n
+SUB 104
+JNEG 3
+JZERO 2
+JUMP 12 # goto L3
+LOAD 106 # licz.s[i] = licz.i
+LOAD 106
+ADD 103
+STORE 69
+STOREI 69 # store => b[j]
+LOAD 106 # t1 = i + 1
+ADD 100
+STORE 107
+LOAD 107 # i = t1
+STORE 106
+JUMP -15 # goto L1
+RTRN 102 # ret
+LOAD 100 # j = 1
+STORE 109
+JUMP 1 # goto L4
+LOAD 109 # if<= j 5
+SUB 110
+JNEG -30
+JZERO -31
+JUMP 13 # goto L6
+LOAD 109 # index variable j
+SUB 1 # subtract array.from for a
+ADD 108 # add base address for a
+STORE 69
+LOADI 69 # load a[i] -> ACC
+PUT 0
+LOAD 109 # t2 = j + 1
+ADD 100
+STORE 111
+LOAD 111 # j = t2
+STORE 109
+JUMP -16 # goto L4
+HALT # halt

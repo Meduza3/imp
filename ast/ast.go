@@ -188,6 +188,7 @@ func (c *Condition) String() string {
 type Value interface {
 	Expression
 	valueNode()
+	String() string
 }
 
 type NumberLiteral struct {

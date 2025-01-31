@@ -1,0 +1,1 @@
+ROCEDURE modify(T t, n) IS BEGIN t[n] := 126; END PROCEDURE modify_in_another_proc(T t, n) IS BEGIN modify(t, n); END PROGRAM IS t[-10:10], n BEGIN n := 10; modify_in_another_proc(t, n); WRITE t[10]; END

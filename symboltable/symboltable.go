@@ -1,10 +1,22 @@
 package symboltable
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 type SymbolTable struct {
 	Table         map[string]map[string]Symbol
 	CurrentOffset int
+}
+
+func (st *SymbolTable) Display(w io.Writer, prefix string) {
+	for function, table := range st.Table {
+		io.WriteString(w, prefix+"=="+function+"==\n")
+		for key, value := range table {
+			io.WriteString(w, fmt.Sprintf("%s%s = %v\n", prefix, key, value))
+		}
+	}
 }
 
 type SymbolKind string
@@ -21,13 +33,13 @@ const (
 type Symbol struct {
 	Name          string
 	Kind          SymbolKind
-	ArgCount      int
-	IsTable       bool
 	Address       int
+	IsTable       bool
 	From          int
 	To            int
 	Size          int
 	ArgumentIndex int
+	ArgCount      int
 }
 
 func New() *SymbolTable {
@@ -43,7 +55,11 @@ func (st *SymbolTable) Declare(name, procedureName string, symbol Symbol) error 
 		st.Table[procedureName] = make(map[string]Symbol)
 		symbol.Address = st.CurrentOffset
 		st.Table[procedureName][name] = symbol
-		st.CurrentOffset++
+		if symbol.Size > 0 {
+			st.CurrentOffset += symbol.Size
+		} else {
+			st.CurrentOffset++
+		}
 	}
 	got, ok := st.Table[procedureName][name]
 	if ok {
@@ -52,7 +68,11 @@ func (st *SymbolTable) Declare(name, procedureName string, symbol Symbol) error 
 
 	symbol.Address = st.CurrentOffset
 	st.Table[procedureName][name] = symbol
-	st.CurrentOffset++
+	if symbol.Size > 0 {
+		st.CurrentOffset += symbol.Size
+	} else {
+		st.CurrentOffset++
+	}
 	return nil
 }
 

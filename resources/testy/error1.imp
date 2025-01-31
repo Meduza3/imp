@@ -1,6 +1,6 @@
 # błąd: niezadeklarowana zmienna e w linii 5
 PROCEDURE pa(T a, b) IS
- c[0:5],d
+ c[0:5],d,e
 BEGIN
   c:=e;
   a:=c+d;

@@ -1,0 +1,1 @@
+PROGRAM IS x BEGIN x := 10 % -3; WRITE x; END

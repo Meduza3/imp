@@ -10,6 +10,7 @@ import (
 	"github.com/Meduza3/imp/lexer"
 	"github.com/Meduza3/imp/parser"
 	"github.com/Meduza3/imp/tac"
+	"github.com/Meduza3/imp/token"
 	"github.com/Meduza3/imp/translator"
 )
 
@@ -46,6 +47,7 @@ func StartParsing(in io.Reader, out io.Writer) {
 		lexer := lexer.New(line)
 		p := parser.New(lexer)
 		program := p.ParseProgram()
+		fmt.Println("parsed program")
 		io.WriteString(out, program.String())
 		io.WriteString(out, fmt.Sprintf("%#+v", program))
 		io.WriteString(out, "\n")
@@ -74,6 +76,10 @@ func StartParsingFile(filepath string, out io.Writer) {
 
 	// Pass the entire content to the parser
 	l := lexer.New(string(content))
+	l2 := lexer.New(string(content))
+	for tok := l2.NextToken(); tok.Type != token.EOF; tok = l2.NextToken() {
+		fmt.Println(tok)
+	}
 	p := parser.New(l)
 	program := p.ParseProgram()
 
@@ -183,9 +189,51 @@ func StartFile(filepath string, out io.Writer) {
 	defer file.Close()
 
 	// Read the entire file content
-	_, err = io.ReadAll(file)
+	content, err := io.ReadAll(file)
+	fmt.Println("# reading file")
 	if err != nil {
 		fmt.Fprintf(out, "Error reading file %s: %v\n", filepath, err)
 		return
 	}
+
+	l := lexer.New(string(content))
+	p := parser.New(l)
+	fmt.Print("# parsing program...		")
+	program := p.ParseProgram()
+	fmt.Println("parsed. ")
+	for _, err := range p.Errors() {
+		fmt.Printf("# parse Error: %s\n", err)
+	}
+	g := tac.NewGenerator()
+	fmt.Printf("# generating TAC...		")
+	g.Generate(program)
+	fmt.Println("generated. ")
+	blocks := tac.SplitIntoBasicBlocks(g.Instructions)
+	blocks = tac.BuildFlowGraph(blocks)
+	// for _, block := range blocks {
+	// 	fmt.Printf("Block %d connections:\n", block.ID)
+	// 	fmt.Printf("  Predecessors: %v\n", tac.GetBlockIDs(block.Predecessors))
+	// 	fmt.Printf("  Successors: %v\n", tac.GetBlockIDs(block.Successors))
+	// }
+	// for _, block := range blocks {
+	// 	// fmt.Println()
+	// 	// fmt.Printf("Block %d\n", block.ID)
+	// 	for _, instr := range block.Instructions {
+	// 		fmt.Printf("# %s\n", instr.String())
+	// 	}
+	// }
+	g.Instructions = tac.MergeLabelOnlyInstructions(g.Instructions)
+
+	blocks = tac.SplitIntoBasicBlocks(g.Instructions)
+	blocks = tac.BuildFlowGraph(blocks)
+	translator := translator.New(*g.SymbolTable)
+	fmt.Println("# Translating TAC...		")
+	translator.Translate(g.Instructions)
+	for _, instr := range translator.Output {
+		fmt.Printf("%s\n", instr.String())
+	}
+	for _, err := range translator.Errors() {
+		fmt.Printf("# ERROR: %s\n", err)
+	}
+	translator.St.Display(out, "# ")
 }

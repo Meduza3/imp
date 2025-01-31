@@ -79,11 +79,11 @@ func (i Instruction) String() string {
 	} else {
 		string += i.Op
 	}
-	if i.Comment != "" {
-		string += i.Comment
-	}
 	if i.Destination != "" {
 		string += " " + i.Destination
+	}
+	if i.Comment != "" {
+		string += " # " + i.Comment
 	}
 	return string
 }

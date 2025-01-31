@@ -1,0 +1,1 @@
+PROCEDURE add(T x, T y, T z) IS BEGIN z[3] := x[1] + y[2]; END PROGRAM IS x[-5:5], y[0:5], z[-10:10] BEGIN x[1] := 15; y[2] := 17; add(x, y, z); WRITE x[1]; WRITE y[2]; WRITE z[3]; END

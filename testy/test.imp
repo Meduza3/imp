@@ -1,0 +1,15 @@
+PROCEDURE licz(T s, n) IS
+j
+BEGIN
+FOR i FROM 1 TO n DO
+s[i] := i;
+ENDFOR
+END
+
+PROGRAM IS
+a[1:10]
+BEGIN
+FOR j FROM 1 TO 5 DO
+WRITE a[j];
+ENDFOR
+END
