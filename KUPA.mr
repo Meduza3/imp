@@ -1,0 +1,34 @@
+
+        SET 1 # declaring constant 1
+        STORE 100
+        SET -5 # declaring constant -5
+        STORE 101
+        SET 5 # declaring constant 5
+        STORE 102
+        SET 126 # declaring constant 126
+        STORE 114
+        SET 0 # declaring constant 0
+        STORE 115
+        JUMP 1 # goto main
+        
+        LOAD 114 # load 126 into ACC
+        STORE 70 # store ACC into tempValue
+        LOAD 115 # load index variable 0
+        ADD 103 # add base address (108) for main.x
+        STORE 69 # store computed address into pointerCell
+        LOAD 70 # load preserved value from tempValue into ACC
+        STOREI 69 # store ACC into main.x[0]
+        LOAD 115 # load index variable 0
+        ADD 103 # add base address for x
+        STORE 69 # store computed address in pointerCell
+        LOADI 69 # load x[n] into ACC
+        PUT 0 # write x[n]
+        HALT # halt
+        # ==main==
+        # x = {x DECLARATION 108 true -5 5 11 0 0}
+        # 126 = {126 CONSTANT 114 false 0 0 0 0 0}
+        # 0 = {0 CONSTANT 115 false 0 0 0 0 0}
+        # 1 = {1 CONSTANT 100 false 0 0 0 0 0}
+        # -5 = {-5 CONSTANT 101 false 0 0 0 0 0}
+        # 5 = {5 CONSTANT 102 false 0 0 0 0 0}
+    

@@ -1,0 +1,1 @@
+PROCEDURE add(x, y, z) IS BEGIN z := x + y; END PROGRAM IS x, y, z BEGIN x := 15; y := 17; add(x, y, z); WRITE x; WRITE y; WRITE z; END

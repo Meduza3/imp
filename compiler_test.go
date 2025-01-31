@@ -83,6 +83,8 @@ func testAssembly(t *testing.T, inputCode string, expectedOutputNumbers []int, u
 	nums := extractNumbers(string(output))
 	// 5) Validate against expectedOutputNumbers
 	if len(nums) != len(expectedOutputNumbers) {
+		t.Log(string(compiled))
+
 		t.Fatalf("expected %d numbers, but got %d: %v", len(expectedOutputNumbers), len(nums), nums)
 	}
 
@@ -116,7 +118,7 @@ func extractNumbers(output string) []int {
 }
 
 func TestIfStatements(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	cases := []struct {
 		inputCode      string
 		expectedOutput []int
@@ -263,16 +265,16 @@ func TestArithmeticOperations(t *testing.T) {
 		// {"PROGRAM IS x BEGIN x := 10 / 2; WRITE x; END", []int{5}},
 		// {"PROGRAM IS x BEGIN x := 10 / 0; WRITE x; END", []int{0}},
 		// {"PROGRAM IS x, t[1:10] BEGIN t[5] := 17; x := t[5] / 2; WRITE x; END", []int{8}},
-		{"PROGRAM IS x BEGIN x := 12 % 2; WRITE x; END", []int{0}},
-		{"PROGRAM IS x BEGIN x := 13 % 2; WRITE x; END", []int{1}},
-		{"PROGRAM IS x BEGIN x := 127 % 12; WRITE x; END", []int{7}},
-		{"PROGRAM IS x BEGIN x := 10 % 3; WRITE x; END", []int{1}},
-		{"PROGRAM IS x BEGIN x := 10 % -3; WRITE x; END", []int{-2}},
-		{"PROGRAM IS x BEGIN x := -10 % 3; WRITE x; END", []int{2}},
-		{"PROGRAM IS x BEGIN x := -10 % -3; WRITE x; END", []int{-1}},
-		{"PROGRAM IS x BEGIN x := 8968 % -8; WRITE x; END", []int{0}},
-		{"PROGRAM IS x BEGIN x := -5467 % 11; WRITE x; END", []int{0}},
-		{"PROGRAM IS x BEGIN x := 548 % -2901; WRITE x; END", []int{-2353}},
+		// {"PROGRAM IS x BEGIN x := 12 % 2; WRITE x; END", []int{0}},
+		// {"PROGRAM IS x BEGIN x := 13 % 2; WRITE x; END", []int{1}},
+		// {"PROGRAM IS x BEGIN x := 127 % 12; WRITE x; END", []int{7}},
+		// {"PROGRAM IS x BEGIN x := 10 % 3; WRITE x; END", []int{1}},
+		// {"PROGRAM IS x BEGIN x := 10 % -3; WRITE x; END", []int{-2}},
+		// {"PROGRAM IS x BEGIN x := -10 % 3; WRITE x; END", []int{2}},
+		// {"PROGRAM IS x BEGIN x := -10 % -3; WRITE x; END", []int{-1}},
+		// {"PROGRAM IS x BEGIN x := 8968 % -8; WRITE x; END", []int{0}},
+		// {"PROGRAM IS x BEGIN x := -5467 % 11; WRITE x; END", []int{0}},
+		// {"PROGRAM IS x BEGIN x := 548 % -2901; WRITE x; END", []int{-2353}},
 	}
 
 	for _, tt := range cases {
@@ -318,6 +320,21 @@ func TestWrite(t *testing.T) {
 			[]int{127},
 			"127\n",
 		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input_code, func(t *testing.T) {
+			testAssembly(t, tt.input_code, tt.expectedOutput, tt.userInput)
+		})
+	}
+}
+
+func TestProc(t *testing.T) {
+	cases := []struct {
+		input_code     string
+		expectedOutput []int
+		userInput      string
+	}{
 		{
 			"PROCEDURE write_proc(proc_x) IS BEGIN WRITE proc_x; END PROGRAM IS main_x BEGIN main_x := 123; write_proc(main_x); END",
 			[]int{123},

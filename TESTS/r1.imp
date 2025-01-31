@@ -1,0 +1,1 @@
+PROGRAM IS x[-5:5], n BEGIN n := -5; READ x[n]; WRITE x[n]; END

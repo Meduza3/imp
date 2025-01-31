@@ -200,7 +200,7 @@ func (nl *NumberLiteral) expressionNode()      {}
 func (nl *NumberLiteral) valueNode()           {}
 func (nl *NumberLiteral) TokenLiteral() string { return nl.Token.Literal }
 func (nl *NumberLiteral) String() string {
-	int, err := strconv.Atoi(nl.Value)
+	int, err := strconv.Atoi(nl.TokenLiteral())
 	if err != nil {
 		return "oops"
 	}
@@ -382,17 +382,18 @@ func (ic *IfCommand) String() string {
 }
 
 type Identifier struct {
-	Token token.Token // token.IDENT
-	Value string
-	Index string
+	Token   token.Token // token.IDENT
+	Value   string
+	IsTable bool
+	Index   string
 }
 
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) valueNode()           {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) String() string {
-	if i.Index != "" {
-		return i.Value + "[" + i.Index + "]"
+	if i.IsTable {
+		return fmt.Sprintf("%s[%s]", i.Value, i.Index)
 	}
 	return i.Value
 }

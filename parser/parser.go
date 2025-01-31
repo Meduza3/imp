@@ -540,7 +540,7 @@ func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
 			return nil, fmt.Errorf("in parseIdentifier(): failed to parse index: %v", err)
 		}
 		identifier.Index = index.String()
-
+		identifier.IsTable = true
 		if !p.curTokenIs(token.RBRACKET) { // RBRACKET = ]
 			return nil, fmt.Errorf("parseIdentifier: expected a ']' , got %s", p.peekToken.Type)
 		}

@@ -1,1 +1,1 @@
-ROCEDURE add(T x, T y, T z, a, b, c) IS BEGIN z[a] := x[b] + y[c]; END PROGRAM IS x[-5:5], y[0:5], z[-10:10], a, b, c BEGIN x[1] := 15; y[2] := 17; a := 3; b := 1; c := 2; add(x, y, z, a, b, c); WRITE x[1]; WRITE y[2]; WRITE z[3]; END
+PROCEDURE add(T x, T y, T z, a, b, c) IS BEGIN z[a] := x[b] + y[c]; END PROGRAM IS x[-5:5], y[0:5], z[-10:10], a, b, c BEGIN x[1] := 15; y[2] := 17; a := 3; b := 1; c := 2; add(x, y, z, a, b, c); WRITE x[1]; WRITE y[2]; WRITE z[3]; END

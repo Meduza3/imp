@@ -2,7 +2,6 @@ package translator
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -16,7 +15,6 @@ type Translator struct {
 	Output              []code.Instruction
 	labelCounter        int
 	St                  symboltable.SymbolTable
-	tempCounter         int
 	currentAddress      int
 	currentFunctionName string
 	procEntries         map[string]int // Adresy początków procedur
@@ -30,10 +28,13 @@ func (t *Translator) Errors() []string {
 }
 
 func New(st symboltable.SymbolTable) *Translator {
-	return &Translator{pointerCell: 69, St: st, procEntries: make(map[string]int), labels: make(map[string]int)}
+	return &Translator{pointerCell: 10, St: st, procEntries: make(map[string]int), labels: make(map[string]int)}
 }
 
 func (t *Translator) Translate(tac []tac.Instruction) []code.Instruction {
+	for _, ins := range tac {
+		fmt.Println("# ins: ", ins)
+	}
 	t.firstPass(tac)
 	output := t.secondPass(t.Output)
 	t.Output = output
@@ -43,6 +44,7 @@ func (t *Translator) Translate(tac []tac.Instruction) []code.Instruction {
 func (t *Translator) secondPass(input []code.Instruction) []code.Instruction {
 	// 1) Collect all labels => line index
 	labelAddress := make(map[string]int)
+
 	for i := 0; i < len(input); i++ {
 		if input[i].Label != "" {
 			labelAddress[input[i].Label] = i
@@ -57,8 +59,8 @@ func (t *Translator) secondPass(input []code.Instruction) []code.Instruction {
 			// If your machine uses JUMP j => (k = k + j), typically offset = target - i
 			// or possibly: offset = target - (i + 1).  Choose whichever your VM expects:
 			relAddr := target - i
-			input[i].Destination = ""
 			input[i].Operand = relAddr
+			input[i].Destination = ""
 			input[i].HasOperand = true
 		}
 	}
@@ -85,8 +87,9 @@ func (t *Translator) setupConstants() {
 
 func (t *Translator) firstPass(inss []tac.Instruction) {
 	t.setupConstants()
+
 	for _, ins := range inss {
-		fmt.Println("# ins: ", ins)
+
 		// If this instruction has a label, you might record the final “machine code”
 		// address in a separate map, or emit a comment for readability:
 		var label string
@@ -103,42 +106,41 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 		//----------------------------------------------------------------------
 		// 1) Simple Assignments:  a = b
 		//----------------------------------------------------------------------
-		case tac.OpAssign:
-			dest := ins.Destination // e.g. "a"
-			src := ins.Arg1         // e.g. "b" or maybe "5"
-
-			err := t.handleAssign(dest, src, label)
+		case tac.OpAssign: // e.g. "b" or maybe "5"
+			err := t.handleAssign(ins)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("failed to handle Assign %v: %v", ins, err))
 			}
+
 		//----------------------------------------------------------------------
 		// 2) Arithmetic: a = b + c, a = b - c, etc.
 		//----------------------------------------------------------------------
 		case tac.OpAdd, tac.OpSub:
 			// For example:  ins = { Op: OpAdd, Destination: "x", Arg1: "a", Arg2: "b" }
-			err := t.handleAddSub(ins.Op, ins.Destination, ins.Arg1, ins.Arg2, label)
+			err := t.handleAddSub(ins)
 			if err != nil {
-				t.errors = append(t.errors, fmt.Sprintf("failed to handleAddSub %s: %v", ins, err))
+				t.errors = append(t.errors, fmt.Sprintf("failed to handleAddSub %v: %v", ins, err))
 			}
 		case tac.OpMod:
-			err := t.handleMod(ins.Destination, ins.Arg1, ins.Arg2, label)
+			err := t.handleMod(ins)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
 		case tac.OpGoto:
 			// "goto L"
-			t.handleGoto(ins.Destination, label)
+			destination := ins.JumpTo
+			t.handleGoto(destination, label)
 
 		case tac.OpIfLT, tac.OpIfLE, tac.OpIfGT, tac.OpIfGE, tac.OpIfEQ, tac.OpIfNE:
 			// e.g. "if< x, y goto L"
-			t.handleIf(ins.Op, ins.Arg1, ins.Arg2, ins.Destination, label)
+			t.handleIf(ins)
 		case tac.OpRead:
-			err := t.handleRead(ins.Arg1, label)
+			err := t.handleRead(ins)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
 		case tac.OpWrite:
-			err := t.handleWrite(ins.Arg1, label)
+			err := t.handleWrite(ins)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
@@ -149,17 +151,22 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 			//----------------------------------------------------------------------
 			// We will fill in the rest (OpIfXX, OpGoto, OpCall, etc.) later
 		case tac.OpCall:
-			err := t.handleCall(ins.Arg1, ins.Arg2, label)
+			err := t.handleCall(ins)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
 		case tac.OpParam:
-			err := t.handleParam(ins.Arg1, label)
+			err := t.handleParam(*ins.Arg1, label)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
 		case tac.OpRet:
 			err := t.handleRet(label)
+			if err != nil {
+				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
+			}
+		case tac.OpArrayLoad:
+			err := t.handleArrayLoad(ins)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
@@ -170,229 +177,135 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 	}
 }
 
-func (t *Translator) handleRead(arg1, label string) error {
-	if isArrayRef(arg1) {
-		base, idx, err := parseArrayRef(arg1)
-		if err != nil {
-			return fmt.Errorf("failed parsing array ref: %v", err)
-		}
-		arrSymbol, err := t.getSymbol(base)
-		if err != nil {
-			return err
-		}
-		baseAddr := arrSymbol.Address
-		fromVal := arrSymbol.From
-		fromValSymbol, err := t.getSymbol(fmt.Sprintf("%d", fromVal))
+func (t *Translator) handleRead(ins tac.Instruction) error {
+	pointerCell := t.pointerCell
+	if ins.Arg1 == nil {
+		panic("nil arg1!!!")
+	}
+	if ins.Arg1.IsTable {
+		idxSym, err := t.getSymbol(ins.Arg1Index)
 		if err != nil {
 			return err
 		}
-		idxSym, err := t.getSymbol(idx)
-		if err != nil {
-			return err
-		}
-		pointerCell := t.pointerCell
-		scratchCell := t.pointerCell + 1 // or any free cell
-
-		// --- Compute pointerCell = base + (idx - fromVal) ---
 		t.emit(code.Instruction{
-			Op:         code.LOAD,
+			Op:         code.SET,
 			HasOperand: true,
-			Operand:    idxSym.Address,
-			Label:      label,
-			Comment:    "index variable " + idx,
+			Operand:    ins.Arg1.Address,
+			Label:      ins.Label,
+			Comment:    ins.String(),
 		})
-		if fromVal != 0 {
-			t.emit(code.Instruction{
-				Op:         code.SUB,
-				HasOperand: true,
-				Operand:    fromValSymbol.Address,
-				Comment:    "subtract array.from for " + arrSymbol.Name,
-			})
-		}
 		t.emit(code.Instruction{
 			Op:         code.ADD,
 			HasOperand: true,
-			Operand:    baseAddr,
-			Comment:    "add base address for " + arrSymbol.Name,
+			Operand:    idxSym.Address,
 		})
+		// 2) STORE pointerCell
 		t.emit(code.Instruction{
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    pointerCell,
+			Comment:    "pointerCell = address of x[n]",
 		})
 
-		// --- Read into scratchCell ---
+		// 3) GET scratchCell => memory[scratchCell] = input
 		t.emit(code.Instruction{
 			Op:         code.GET,
 			HasOperand: true,
-			Operand:    scratchCell,
-			Comment:    "read -> scratch cell",
+			Operand:    0,
+			Comment:    "read input directly into memory[scratchCell]",
 		})
-
-		// --- Then copy scratchCell => memory[memory[pointerCell]] ---
-		t.emit(code.Instruction{
-			Op:         code.LOAD,
-			HasOperand: true,
-			Operand:    scratchCell,
-		})
+		// 5) STOREI pointerCell => memory[memory[pointerCell]] = ACC
 		t.emit(code.Instruction{
 			Op:         code.STOREI,
 			HasOperand: true,
 			Operand:    pointerCell,
-			Comment:    "store scratch => array element",
+			Comment:    "x[n] = input",
 		})
+
 	} else {
-		// Plain variable read
-		addr, err := t.getAddr(arg1)
-		if err != nil {
-			return fmt.Errorf("Failed to get addr of %q", arg1)
-		}
+
 		t.emit(code.Instruction{
 			Op:         code.GET,
 			HasOperand: true,
-			Operand:    addr,
-			Comment:    "read " + arg1,
-			Label:      label,
+			Operand:    ins.Arg1.Address,
+			Label:      ins.Label,
 		})
 	}
 	return nil
 }
 
-func (t *Translator) handleWrite(arg1, label string) error {
-	if isArrayRef(arg1) {
-		base, idx, err := parseArrayRef(arg1)
+func (t *Translator) handleWrite(ins tac.Instruction) error {
+	if ins.Arg1 == nil {
+		panic("WRITE instruction has nil Arg1")
+	}
+	if ins.Arg1.IsTable {
+		idxSym, err := t.getSymbol(ins.Arg1Index)
 		if err != nil {
-			return fmt.Errorf("failed to parse arg1 array ref: %v", err)
+			return fmt.Errorf("failed to getSymbol for index %q: %v", ins.Arg1Index, err)
 		}
-		arrSymbol, err := t.getSymbol(base)
-		if err != nil {
-			return fmt.Errorf("failed to get symbol for array base: %v", err)
-		}
-		baseAddr := arrSymbol.Address
-		fromVal := arrSymbol.From
-		fromValSymbol, err := t.getSymbol(fmt.Sprintf("%d", fromVal))
-		if err != nil {
-			return fmt.Errorf("failed to get address of fromVal %d", fromVal)
-		}
-		idxSym, err := t.getSymbol(idx)
-		if err != nil {
-			return fmt.Errorf("failed to get symbol for array index: %v", err)
-		}
-		pointerCell := t.pointerCell // Use a dedicated temporary cell
-
-		// Compute the address: baseAddr + (idx - fromVal)
 		t.emit(code.Instruction{
-			Op:         code.LOAD,
+			Op:         code.SET,
 			HasOperand: true,
-			Operand:    idxSym.Address,
-			Comment:    "load index variable " + idx,
+			Operand:    ins.Arg1.Address,
+			Label:      ins.Label,
+			Comment:    ins.String(),
 		})
-		if fromVal != 0 {
-			t.emit(code.Instruction{
-				Op:         code.SUB,
-				HasOperand: true,
-				Operand:    fromValSymbol.Address,
-				Comment:    "subtract array.from for " + arrSymbol.Name,
-			})
-		}
 		t.emit(code.Instruction{
 			Op:         code.ADD,
 			HasOperand: true,
-			Operand:    baseAddr,
-			Comment:    "add base address for " + arrSymbol.Name,
+			Operand:    idxSym.Address,
 		})
-		t.emit(code.Instruction{
-			Op:         code.STORE,
-			HasOperand: true,
-			Operand:    pointerCell,
-			Comment:    "store computed address in pointerCell",
-		})
-
-		// Load the value from the computed address
 		t.emit(code.Instruction{
 			Op:         code.LOADI,
 			HasOperand: true,
-			Operand:    pointerCell,
+			Operand:    0,
 			Comment:    "load x[n] into ACC",
-		})
-		t.emit(code.Instruction{
-			Op:         code.STORE,
-			HasOperand: true,
-			Operand:    pointerCell + 1, // Use a separate temp for storing the value
-			Comment:    "store ACC to temp",
 		})
 		t.emit(code.Instruction{
 			Op:         code.PUT,
 			HasOperand: true,
-			Operand:    pointerCell + 1, // Reference the correct temp cell
+			Operand:    0,
 			Comment:    "write x[n]",
 		})
 	} else {
-		addr, err := t.getAddr(arg1)
-		if err != nil {
-			return fmt.Errorf("Failed to get addr of %q", arg1)
-		}
-		// emit "PUT addr"
-		ins := code.Instruction{Op: code.PUT, Comment: "write " + arg1, HasOperand: true, Label: label, Operand: addr}
+		ins := code.Instruction{Op: code.PUT, HasOperand: true, Label: ins.Label, Operand: ins.Arg1.Address}
 		t.emit(ins)
 	}
 	return nil
 }
 
-func isArrayRef(s string) bool {
-	return strings.Contains(s, "[") && strings.Contains(s, "]")
-}
-
-// parseArrayRef("main.a[i]") => ("main.a", "i")
-// or parseArrayRef("a[x]")   => ("a", "x")
-func parseArrayRef(s string) (base string, index string, err error) {
-	// e.g. s = "main.a[i]" or "a[i]"
-	// find '[' and ']'
-	lb := strings.IndexRune(s, '[')
-	rb := strings.IndexRune(s, ']')
-	if lb < 0 || rb < 0 || lb > rb {
-		return "", "", fmt.Errorf("Invalid array syntax: %q", s)
+func (t *Translator) handleAssign(ins tac.Instruction) error {
+	if ins.Arg1 == nil || ins.Arg2 == nil {
+		return fmt.Errorf("nil argument in assignment instruction: %v", ins)
 	}
-	base = s[:lb]        // "main.a"
-	index = s[lb+1 : rb] // "i"
-	return base, index, nil
-}
-
-func (t *Translator) handleAssign(dest, src, label string) error {
-	srcIsArray := isArrayRef(src)
-	destIsArray := isArrayRef(dest)
-
-	if srcIsArray && destIsArray {
+	dest := ins.Arg1
+	destIndex := ins.Arg1Index
+	src := ins.Arg2
+	srcIndex := ins.Arg2Index
+	label := ins.Label
+	if src.IsTable && dest.IsTable {
 		// Case 4: Array Element to Array Element (x[n] := y[m])
-		return t.handleArrayToArrayAssign(dest, src, label)
-	} else if srcIsArray {
+		return t.handleArrayToArrayAssign(*dest, *src, destIndex, srcIndex, label)
+	} else if src.IsTable {
 		// Case 3: Array Element to Variable (a := x[n])
-		return t.handleArrayToVarAssign(dest, src, label)
-	} else if destIsArray {
+		return t.handleArrayToVarAssign(*dest, *src, srcIndex, label)
+	} else if dest.IsTable {
 		// Case 2: Variable to Array Element (x[n] := b)
-		return t.handleVarToArrayAssign(dest, src, label)
+		return t.handleVarToArrayAssign(*dest, *src, destIndex, label)
 	} else {
 		// Case 1: Variable to Variable (a := b)
-		return t.handleVarToVarAssign(dest, src, label)
+		return t.handleVarToVarAssign(*dest, *src, label)
 	}
 }
 
-func (t *Translator) handleVarToVarAssign(dest, src, label string) error {
-	srcAddr, err := t.getAddr(src)
-	if err != nil {
-		return fmt.Errorf("failed to get src address: %v", err)
-	}
-	destAddr, err := t.getAddr(dest)
-	if err != nil {
-		return fmt.Errorf("failed to get dest address: %v", err)
-	}
-
+func (t *Translator) handleVarToVarAssign(dest, src symboltable.Symbol, label string) error {
+	fmt.Println("# called var to var with ", dest, src)
 	// Load src into ACC
 	t.emit(code.Instruction{
 		Op:         code.LOAD,
 		HasOperand: true,
-		Operand:    srcAddr,
-		Comment:    fmt.Sprintf("load %s into ACC", src),
+		Operand:    src.Address,
+		Comment:    fmt.Sprintf("load %v into ACC", src),
 		Label:      label,
 	})
 
@@ -400,749 +313,508 @@ func (t *Translator) handleVarToVarAssign(dest, src, label string) error {
 	t.emit(code.Instruction{
 		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    destAddr,
-		Comment:    fmt.Sprintf("store ACC into %s", dest),
+		Operand:    dest.Address,
+		Comment:    fmt.Sprintf("store ACC into %v", dest),
 	})
 
 	return nil
 }
 
-func (t *Translator) handleVarToArrayAssign(dest, src, label string) error {
-	base, idx, err := parseArrayRef(dest)
-	if err != nil {
-		return fmt.Errorf("failed to parse array ref for dest %s: %v", dest, err)
-	}
-	arrSymbol, err := t.getSymbol(base)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for array base %s: %v", base, err)
-	}
-	baseAddr := arrSymbol.Address
-	fromVal := arrSymbol.From
-	fromValSymbol, err := t.getSymbol(fmt.Sprintf("%d", fromVal))
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for array lower bound: %v", err)
-	}
-	idxSym, err := t.getSymbol(idx)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for index %s: %v", idx, err)
-	}
-	pointerCell := t.pointerCell   // e.g., 69
-	tempValue := t.pointerCell + 1 // e.g., 70
+func (t *Translator) handleVarToArrayAssign(dest, src symboltable.Symbol, destIndex string, label string) error {
 
-	// Step 1: Load src into ACC
-	srcAddr, err := t.getAddr(src)
-	if err != nil {
-		return fmt.Errorf("failed to get src address: %v", err)
-	}
+	// Load the index value into ACC
 	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    srcAddr,
+		Op:         code.SET,
+		Operand:    dest.Address,
+		Comment:    fmt.Sprintf("ACC <== Address of %v[0]", dest.Name),
 		Label:      label,
-		Comment:    fmt.Sprintf("load %s into ACC", src),
-	})
-
-	// Step 2: Store ACC into tempValue
-	t.emit(code.Instruction{
-		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    tempValue,
-		Comment:    "store ACC into tempValue",
 	})
-
-	// Step 3: Compute the address of x[n]
-	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    idxSym.Address,
-		Comment:    fmt.Sprintf("load index variable %s", idx),
-	})
-	if fromVal != 0 {
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			HasOperand: true,
-			Operand:    fromValSymbol.Address,
-			Comment:    fmt.Sprintf("subtract array.from (%d) for %s", fromVal, base),
-		})
+	// Add the base address
+	indexSymbol, err := t.getSymbol(destIndex)
+	if err != nil {
+		return err
 	}
 	t.emit(code.Instruction{
 		Op:         code.ADD,
+		Operand:    indexSymbol.Address,
+		Comment:    fmt.Sprintf("add index at address to ACC"),
 		HasOperand: true,
-		Operand:    baseAddr,
-		Comment:    fmt.Sprintf("add base address (%d) for %s", baseAddr, base),
 	})
 	t.emit(code.Instruction{
 		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    pointerCell,
-		Comment:    "store computed address into pointerCell",
+		Operand:    t.pointerCell,
+		Comment:    fmt.Sprintf("pc = &x[n]"),
 	})
-
-	// Step 4: Load preserved value from tempValue into ACC
 	t.emit(code.Instruction{
 		Op:         code.LOAD,
 		HasOperand: true,
-		Operand:    tempValue,
-		Comment:    "load preserved value from tempValue into ACC",
+		Operand:    src.Address,
+		Comment:    fmt.Sprintf("load %v into ACC", src.Name),
 	})
-
-	// Step 5: Store ACC into x[n] via STOREI
 	t.emit(code.Instruction{
 		Op:         code.STOREI,
 		HasOperand: true,
-		Operand:    pointerCell,
-		Comment:    fmt.Sprintf("store ACC into %s[%s]", base, idx),
+		Operand:    t.pointerCell,
+		Comment:    "p[pointerCell] <== ACC",
 	})
+	t.emit(code.Instruction{})
 
 	return nil
 }
 
-func (t *Translator) handleArrayToVarAssign(dest, src, label string) error {
-	base, idx, err := parseArrayRef(src)
-	if err != nil {
-		return fmt.Errorf("failed to parse array ref for src %s: %v", src, err)
-	}
-	arrSymbol, err := t.getSymbol(base)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for array base %s: %v", base, err)
-	}
-	baseAddr := arrSymbol.Address
-	fromVal := arrSymbol.From
-	fromValSymbol, err := t.getSymbol(fmt.Sprintf("%d", fromVal))
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for array lower bound: %v", err)
-	}
-	idxSym, err := t.getSymbol(idx)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for index %s: %v", idx, err)
-	}
-	pointerCell := t.pointerCell   // e.g., 69
-	tempValue := t.pointerCell + 1 // e.g., 70
+func (t *Translator) handleArrayToVarAssign(dest, src symboltable.Symbol, srcIndex, label string) error {
 
-	// Step 1: Compute the address of x[n]
-	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    idxSym.Address,
-		Label:      label,
-		Comment:    fmt.Sprintf("load index variable %s", idx),
-	})
-	if fromVal != 0 {
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			HasOperand: true,
-			Operand:    fromValSymbol.Address,
-			Comment:    fmt.Sprintf("subtract array.from (%d) for %s", fromVal, base),
-		})
-	}
-	t.emit(code.Instruction{
-		Op:         code.ADD,
-		HasOperand: true,
-		Operand:    baseAddr,
-		Comment:    fmt.Sprintf("add base address (%d) for %s", baseAddr, base),
-	})
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		HasOperand: true,
-		Operand:    pointerCell,
-		Comment:    "store computed address into pointerCell",
-	})
-
-	// Step 2: Load value from x[n] into ACC via LOADI
-	t.emit(code.Instruction{
-		Op:         code.LOADI,
-		HasOperand: true,
-		Operand:    pointerCell,
-		Comment:    fmt.Sprintf("load %s[%s] into ACC", base, idx),
-	})
-
-	// Step 3: Store ACC into tempValue
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		HasOperand: true,
-		Operand:    tempValue,
-		Comment:    "store ACC into tempValue",
-	})
-
-	// Step 4: Load tempValue into ACC
-	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    tempValue,
-		Comment:    "load preserved value from tempValue into ACC",
-	})
-
-	// Step 5: Store ACC into dest variable
-	destAddr, err := t.getAddr(dest)
-	if err != nil {
-		return fmt.Errorf("failed to get dest address: %v", err)
+	if err := t.loadOperandIndirect(src, srcIndex, label); err != nil {
+		return err
 	}
 	t.emit(code.Instruction{
 		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    destAddr,
-		Comment:    fmt.Sprintf("store ACC into %s", dest),
+		Operand:    dest.Address,
+		Comment:    "p[pointerCell] <== ACC",
 	})
-
 	return nil
 }
 
-func (t *Translator) handleArrayToArrayAssign(dest, src, label string) error {
-	// Parse destination array reference
-	destBase, destIdx, err := parseArrayRef(dest)
-	if err != nil {
-		return fmt.Errorf("failed to parse array ref for dest %s: %v", dest, err)
-	}
-	destArrSymbol, err := t.getSymbol(destBase)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for dest array base %s: %v", destBase, err)
-	}
-	destBaseAddr := destArrSymbol.Address
-	destFromVal := destArrSymbol.From
-	destFromValSymbol, err := t.getSymbol(fmt.Sprintf("%d", destFromVal))
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for dest array lower bound: %v", err)
-	}
-	destIdxSym, err := t.getSymbol(destIdx)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for dest index %s: %v", destIdx, err)
-	}
-	destPointerCell := t.pointerCell // e.g., 69
-	_ = t.pointerCell + 1            // e.g., 70
-
-	// Parse source array reference
-	srcBase, srcIdx, err := parseArrayRef(src)
-	if err != nil {
-		return fmt.Errorf("failed to parse array ref for src %s: %v", src, err)
-	}
-	srcArrSymbol, err := t.getSymbol(srcBase)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for src array base %s: %v", srcBase, err)
-	}
-	srcBaseAddr := srcArrSymbol.Address
-	srcFromVal := srcArrSymbol.From
-	srcFromValSymbol, err := t.getSymbol(fmt.Sprintf("%d", srcFromVal))
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for src array lower bound: %v", err)
-	}
-	srcIdxSym, err := t.getSymbol(srcIdx)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for src index %s: %v", srcIdx, err)
-	}
-	srcPointerCell := t.pointerCell + 2 // e.g., 71
-	srcTempValue := t.pointerCell + 3   // e.g., 72
-
-	// Step 1: Compute the address of y[m]
+func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcIndex, destIndex, label string) error {
 	t.emit(code.Instruction{
-		Op:         code.LOAD,
+		Op:         code.SET,
+		Operand:    dest.Address,
+		HasOperand: true,
 		Label:      label,
-		HasOperand: true,
-		Operand:    srcIdxSym.Address,
-		Comment:    fmt.Sprintf("load src index variable %s", srcIdx),
 	})
-	if srcFromVal != 0 {
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			HasOperand: true,
-			Operand:    srcFromValSymbol.Address,
-			Comment:    fmt.Sprintf("subtract src array.from (%d) for %s", srcFromVal, srcBase),
-		})
+	indexSymbol, err := t.getSymbol(destIndex)
+	if err != nil {
+		return err
 	}
 	t.emit(code.Instruction{
 		Op:         code.ADD,
+		Operand:    indexSymbol.Address,
 		HasOperand: true,
-		Operand:    srcBaseAddr,
-		Comment:    fmt.Sprintf("add src base address (%d) for %s", srcBaseAddr, srcBase),
 	})
 	t.emit(code.Instruction{
 		Op:         code.STORE,
+		Operand:    t.pointerCell,
 		HasOperand: true,
-		Operand:    srcPointerCell,
-		Comment:    "store computed src address into srcPointerCell",
 	})
-
-	// Step 2: Load value from y[m] via LOADI
-	t.emit(code.Instruction{
-		Op:         code.LOADI,
-		HasOperand: true,
-		Operand:    srcPointerCell,
-		Comment:    fmt.Sprintf("load %s[%s] into ACC", srcBase, srcIdx),
-	})
-
-	// Step 3: Store ACC into srcTempValue
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		HasOperand: true,
-		Operand:    srcTempValue,
-		Comment:    "store ACC into srcTempValue",
-	})
-
-	// Step 4: Compute the address of x[n]
-	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    destIdxSym.Address,
-		Comment:    fmt.Sprintf("load dest index variable %s", destIdx),
-	})
-	if destFromVal != 0 {
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			HasOperand: true,
-			Operand:    destFromValSymbol.Address,
-			Comment:    fmt.Sprintf("subtract dest array.from (%d) for %s", destFromVal, destBase),
-		})
+	err = t.loadOperandIndirect(src, srcIndex, "")
+	if err != nil {
+		return err
 	}
-	t.emit(code.Instruction{
-		Op:         code.ADD,
-		HasOperand: true,
-		Operand:    destBaseAddr,
-		Comment:    fmt.Sprintf("add dest base address (%d) for %s", destBaseAddr, destBase),
-	})
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		HasOperand: true,
-		Operand:    destPointerCell,
-		Comment:    "store computed dest address into destPointerCell",
-	})
-
-	// Step 5: Load preserved value from srcTempValue into ACC
-	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    srcTempValue,
-		Comment:    "load preserved value from srcTempValue into ACC",
-	})
-
-	// Step 6: Store ACC into x[n] via STOREI
 	t.emit(code.Instruction{
 		Op:         code.STOREI,
-		HasOperand: true,
-		Operand:    destPointerCell,
-		Comment:    fmt.Sprintf("store ACC into %s[%s]", destBase, destIdx),
-	})
-
-	return nil
-}
-func (t *Translator) handleAddSub(op tac.Op, dest, left, right, label string) error {
-	isLeftArray := isArrayRef(left)
-	isRightArray := isArrayRef(right)
-
-	// Handle Left Operand
-	if isLeftArray {
-		err := t.loadOperandIndirect(left)
-		if err != nil {
-			return fmt.Errorf("failed to load left operand %s: %v", left, err)
-		}
-	} else {
-		err := t.loadOperand(left, label)
-		if err != nil {
-			return fmt.Errorf("failed to load left operand %s: %v", left, err)
-		}
-	}
-
-	// Handle Right Operand
-	if isRightArray {
-		// Load array element into ACC
-		err := t.loadOperandIndirect(right)
-		if err != nil {
-			return fmt.Errorf("failed to load right operand %s: %v", right, err)
-		}
-		// Store it temporarily
-		tempRightAddr := t.allocateTemp()
-		t.emit(code.Instruction{
-			Op:         code.STORE,
-			Operand:    tempRightAddr,
-			Comment:    "store right operand value into temp",
-			HasOperand: true,
-		})
-		// Load it back for the operation
-		t.emit(code.Instruction{
-			Op:         code.LOAD,
-			Operand:    tempRightAddr,
-			Comment:    "load temp right operand into ACC",
-			HasOperand: true,
-		})
-		// Perform the operation
-		if op == tac.OpAdd {
-			t.emit(code.Instruction{
-				Op:         code.ADD,
-				Operand:    tempRightAddr,
-				Comment:    fmt.Sprintf("add %s", right),
-				HasOperand: true,
-			})
-		} else {
-			t.emit(code.Instruction{
-				Op:         code.SUB,
-				Operand:    tempRightAddr,
-				Comment:    fmt.Sprintf("subtract %s", right),
-				HasOperand: true,
-			})
-		}
-	} else {
-		// Right operand is a variable; perform ADD or SUB directly
-		rightAddr, err := t.getAddr(right)
-		if err != nil {
-			return fmt.Errorf("failed to get address of right operand %s: %v", right, err)
-		}
-		var opCode code.Opcode
-		var comment string
-		if op == tac.OpAdd {
-			opCode = code.ADD
-			comment = fmt.Sprintf("add %s", right)
-		} else {
-			opCode = code.SUB
-			comment = fmt.Sprintf("subtract %s", right)
-		}
-		t.emit(code.Instruction{
-			Op:         opCode,
-			Operand:    rightAddr,
-			Comment:    comment,
-			HasOperand: true,
-		})
-	}
-
-	// Step 4: Store the result into destination
-	destAddr, err := t.getAddr(dest)
-	if err != nil {
-		return fmt.Errorf("failed to get address of destination %s: %v", dest, err)
-	}
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		Operand:    destAddr,
-		Comment:    fmt.Sprintf("store ACC into %s", dest),
+		Operand:    t.pointerCell,
 		HasOperand: true,
 	})
-
 	return nil
 }
-func (t *Translator) handleArrayLoad(dest, array, index, label string) error {
-	arrSymbol, err := t.getSymbol(array)
-	if err != nil {
-		return fmt.Errorf("array %s not found: %v", array, err)
-	}
 
-	idxAddr, err := t.getAddr(index)
-	if err != nil {
-		return fmt.Errorf("index %s not found: %v", index, err)
+func (t *Translator) handleAddSub(ins tac.Instruction) error {
+	dest := ins.Destination
+	Arg1Index := ins.Arg1Index
+	arg1 := ins.Arg1
+	Arg2Index := ins.Arg2Index
+	arg2 := ins.Arg2
+	label := ins.Label
+	if arg2.IsTable && dest.IsTable {
+		return t.handleArrayAddSubArray(ins.Op, *dest, *arg1, *arg2, Arg1Index, Arg2Index, label)
+	} else if arg2.IsTable {
+		return t.handleVarAddSubArray(ins.Op, *dest, *arg1, *arg2, Arg2Index, label)
+	} else if dest.IsTable {
+		return t.handleArrayAddSubVar(ins.Op, *dest, *arg1, *arg2, Arg1Index, label)
+	} else {
+		return t.handleVarToVarAddSub(ins.Op, *dest, *arg1, *arg2, label)
 	}
+}
 
-	// Calculate address: array_base + (index - from)
+func (t *Translator) handleArrayAddSubArray(op tac.Op, dest symboltable.Symbol, arg1, arg2 symboltable.Symbol, Arg1Index, Arg2Index string, label string) error {
 	t.emit(code.Instruction{
-		Op:         code.LOAD,
+		Op:         code.SET,
 		HasOperand: true,
-		Operand:    idxAddr,
+		Operand:    arg1.Address,
 		Label:      label,
 	})
-
-	if arrSymbol.From != 0 {
-		fromAddr, err := t.getAddr(strconv.Itoa(arrSymbol.From))
-		if err != nil {
-			return fmt.Errorf("from value not found: %v", err)
-		}
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			HasOperand: true,
-			Operand:    fromAddr,
-		})
+	idxSym, err := t.getSymbol(Arg2Index)
+	if err != nil {
+		return err
 	}
-
 	t.emit(code.Instruction{
 		Op:         code.ADD,
 		HasOperand: true,
-		Operand:    arrSymbol.Address,
+		Operand:    idxSym.Address,
 	})
-
-	ptrCell := t.pointerCell
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		HasOperand: true,
-		Operand:    ptrCell,
-	})
-
-	// Load value from array
 	t.emit(code.Instruction{
 		Op:         code.LOADI,
 		HasOperand: true,
-		Operand:    ptrCell,
+		Operand:    0,
 	})
 
-	destAddr, err := t.getAddr(dest)
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg2.Address,
+	})
+	idxSym, err = t.getSymbol(Arg2Index)
 	if err != nil {
-		return fmt.Errorf("destination %s not found: %v", dest, err)
+		return err
+	}
+	t.emit(code.Instruction{
+		Op:         code.LOADI,
+		HasOperand: true,
+		Operand:    0,
+	})
+	if op == tac.OpAdd {
+
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    t.pointerCell,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    t.pointerCell,
+		})
+	}
+	t.emit(code.Instruction{
+		Op:         code.STORE,
+		HasOperand: true,
+		Operand:    dest.Address,
+	})
+	return nil
+}
+
+func (t *Translator) handleVarAddSubArray(op tac.Op, dest symboltable.Symbol, arg1, arg2 symboltable.Symbol, Arg2Index string, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg2.Address,
+		Label:      label,
+	})
+	idxSym, err := t.getSymbol(Arg2Index)
+	if err != nil {
+		return err
+	}
+	t.emit(code.Instruction{
+		Op:         code.ADD,
+		HasOperand: true,
+		Operand:    idxSym.Address,
+	})
+
+	t.emit(code.Instruction{
+		Op:         code.LOADI,
+		HasOperand: true,
+		Operand:    0,
+	})
+	if op == tac.OpAdd {
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    arg1.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    arg1.Address,
+		})
 	}
 
 	t.emit(code.Instruction{
 		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    destAddr,
+		Operand:    dest.Address,
+	})
+	return nil
+}
+
+func (t *Translator) handleArrayAddSubVar(op tac.Op, dest symboltable.Symbol, arg1, arg2 symboltable.Symbol, Arg1Index string, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg1.Address,
+		Label:      label,
+	})
+	idxSym, err := t.getSymbol(Arg1Index)
+	if err != nil {
+		return err
+	}
+	t.emit(code.Instruction{
+		Op:         code.ADD,
+		HasOperand: true,
+		Operand:    idxSym.Address,
+	})
+
+	if op == tac.OpAdd {
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	}
+	t.emit(code.Instruction{
+		Op:         code.STORE,
+		HasOperand: true,
+		Operand:    dest.Address,
+	})
+	return nil
+}
+
+func (t *Translator) handleVarToVarAddSub(op tac.Op, dest symboltable.Symbol, arg1 symboltable.Symbol, arg2 symboltable.Symbol, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.LOAD,
+		HasOperand: true,
+		Operand:    arg1.Address,
+		Label:      label,
+	})
+	if op == tac.OpAdd {
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	}
+	t.emit(code.Instruction{
+		Op:         code.STORE,
+		HasOperand: true,
+		Operand:    dest.Address,
+	})
+	return nil
+}
+
+func (t *Translator) ArrayMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg1Index, Arg2Index string, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg1.Address,
+		Label:      label,
+	})
+	idxSym, err := t.getSymbol(Arg2Index)
+	if err != nil {
+		return err
+	}
+	t.emit(code.Instruction{
+		Op:         code.ADD,
+		HasOperand: true,
+		Operand:    idxSym.Address,
+	})
+	t.emit(code.Instruction{
+		Op:         code.LOADI,
+		HasOperand: true,
+		Operand:    0,
+	})
+
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg2.Address,
+	})
+	idxSym, err = t.getSymbol(Arg2Index)
+	if err != nil {
+		return err
+	}
+	t.emit(code.Instruction{
+		Op:         code.LOADI,
+		HasOperand: true,
+		Operand:    0,
+	})
+	t.emit(code.Instruction{
+		Op:         code.SUB,
+		HasOperand: true,
+		Operand:    t.pointerCell,
 	})
 
 	return nil
 }
 
-// loadOperand loads the operand into ACC.
-// If it's an array reference, it computes the address and uses LOADI.
-// If it's a variable, it uses LOAD.
-func (t *Translator) loadOperand(operand string, label string) error {
-	if isArrayRef(operand) {
-		// Operand is an array element; compute address and use LOADI
-		return t.loadOperandIndirect(operand)
-	} else {
-		// Operand is a variable; use LOAD
-		addr, err := t.getAddr(operand)
-		if err != nil {
-			return fmt.Errorf("failed to get address for operand %s: %v", operand, err)
-		}
-		ins := code.Instruction{
-			Op:         code.LOAD,
-			Operand:    addr,
-			Comment:    fmt.Sprintf("load %s into ACC", operand),
-			HasOperand: true,
-		}
-		if label != "" {
-			ins.Label = label
-		}
-		t.emit(ins)
-		return nil
+func (t *Translator) VarMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg2Index string, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg2.Address,
+		Label:      label,
+	})
+	idxSym, err := t.getSymbol(Arg2Index)
+	if err != nil {
+		return err
 	}
+	t.emit(code.Instruction{
+		Op:         code.ADD,
+		HasOperand: true,
+		Operand:    idxSym.Address,
+	})
+
+	t.emit(code.Instruction{
+		Op:         code.LOADI,
+		HasOperand: true,
+		Operand:    0,
+	})
+
+	t.emit(code.Instruction{
+		Op:         code.SUB,
+		HasOperand: true,
+		Operand:    arg1.Address,
+	})
+	return nil
+}
+
+func (t *Translator) ArrayMinusVarLoad(arg1, arg2 symboltable.Symbol, Arg1Index string, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.SET,
+		HasOperand: true,
+		Operand:    arg1.Address,
+		Label:      label,
+	})
+	idxSym, err := t.getSymbol(Arg1Index)
+	if err != nil {
+		return err
+	}
+	t.emit(code.Instruction{
+		Op:         code.ADD,
+		HasOperand: true,
+		Operand:    idxSym.Address,
+	})
+
+	t.emit(code.Instruction{
+		Op:         code.SUB,
+		HasOperand: true,
+		Operand:    arg2.Address,
+	})
+
+	return nil
+}
+
+func (t *Translator) VarMinusVarLoad(arg1 symboltable.Symbol, arg2 symboltable.Symbol, label string) error {
+	t.emit(code.Instruction{
+		Op:         code.LOAD,
+		HasOperand: true,
+		Operand:    arg1.Address,
+		Label:      label,
+	})
+
+	t.emit(code.Instruction{
+		Op:         code.SUB,
+		HasOperand: true,
+		Operand:    arg2.Address,
+	})
+
+	return nil
 }
 
 // loadOperandIndirect computes the address of the array element and uses LOADI to load its value into ACC.
-func (t *Translator) loadOperandIndirect(arrayRef string) error {
-	base, index, err := parseArrayRef(arrayRef)
-	if err != nil {
-		return fmt.Errorf("invalid array reference %s: %v", arrayRef, err)
-	}
-
-	arrSymbol, err := t.getSymbol(base)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for array base %s: %v", base, err)
-	}
+func (t *Translator) loadOperandIndirect(operand symboltable.Symbol, operandIndex, label string) error {
 
 	// Compute the address: baseAddr + (index - fromVal)
-	indexAddr, err := t.getAddr(index)
+	indexSymbol, err := t.St.Lookup(fmt.Sprintf("%d", operandIndex), "main")
 	if err != nil {
-		return fmt.Errorf("failed to get address for index %s: %v", index, err)
+		return fmt.Errorf("failed to lookup the symbol for the index %d: %v", operandIndex, err)
 	}
 
 	// Load the index value into ACC
 	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		Operand:    indexAddr,
-		Comment:    fmt.Sprintf("load index %s for array %s", index, base),
+		Op:         code.SET,
+		Operand:    operand.Address,
+		Comment:    fmt.Sprintf("ACC <== Address of %v[0]", operand.Name),
+		Label:      label,
 		HasOperand: true,
 	})
-
-	// Subtract the lower bound if necessary
-	if arrSymbol.From != 0 {
-		fromValStr := fmt.Sprintf("%d", arrSymbol.From)
-		fromValAddr, err := t.getAddr(fromValStr)
-		if err != nil {
-			return fmt.Errorf("failed to get address for array lower bound %s: %v", fromValStr, err)
-		}
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			Operand:    fromValAddr,
-			Comment:    fmt.Sprintf("subtract lower bound %d for array %s", arrSymbol.From, base),
-			HasOperand: true,
-		})
-	}
-
 	// Add the base address
 	t.emit(code.Instruction{
 		Op:         code.ADD,
-		Operand:    arrSymbol.Address,
-		Comment:    fmt.Sprintf("add base address %d for array %s", arrSymbol.Address, base),
+		Operand:    indexSymbol.Address,
+		Comment:    fmt.Sprintf("add index at address to ACC"),
 		HasOperand: true,
 	})
-
-	// Store the computed address into a temporary cell
-	tempAddr := t.allocateTemp()
-	t.emit(code.Instruction{
-		Op:         code.STORE,
-		Operand:    tempAddr,
-		Comment:    "store computed address into temp cell",
-		HasOperand: true,
-	})
-
 	// Use LOADI to load the value from the computed address
 	t.emit(code.Instruction{
 		Op:         code.LOADI,
-		Operand:    tempAddr,
-		Comment:    fmt.Sprintf("load %s[%s] into ACC", base, index),
+		Operand:    0,
+		Comment:    fmt.Sprintf("ACC' <== %v[ACC]", operand.Name),
 		HasOperand: true,
 	})
-
 	return nil
 }
 
-// storeOperandIndirect computes the address of the array element and uses STOREI to store ACC's value.
-func (t *Translator) storeOperandIndirect(arrayRef string) error {
-	base, index, err := parseArrayRef(arrayRef)
+func (t *Translator) handleArrayLoad(ins tac.Instruction) error {
+	// Calculate array address
+	base := ins.Arg2.Address
+	indexSym, err := t.getSymbol(ins.Arg2Index)
 	if err != nil {
-		return fmt.Errorf("invalid array reference %s: %v", arrayRef, err)
+		return err
 	}
 
-	arrSymbol, err := t.getSymbol(base)
-	if err != nil {
-		return fmt.Errorf("failed to get symbol for array base %s: %v", base, err)
-	}
-
-	// Compute the address: baseAddr + (index - fromVal)
-	indexAddr, err := t.getAddr(index)
-	if err != nil {
-		return fmt.Errorf("failed to get address for index %s: %v", index, err)
-	}
-
-	// Load the index value into ACC
 	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		Operand:    indexAddr,
-		Comment:    fmt.Sprintf("load index %s for array %s", index, base),
+		Op:         code.SET,
 		HasOperand: true,
+
+		Operand: base,
+		Comment: "Array base address",
 	})
 
-	// Subtract the lower bound if necessary
-	if arrSymbol.From != 0 {
-		fromValStr := fmt.Sprintf("%d", arrSymbol.From)
-		fromValAddr, err := t.getAddr(fromValStr)
-		if err != nil {
-			return fmt.Errorf("failed to get address for array lower bound %s: %v", fromValStr, err)
-		}
-		t.emit(code.Instruction{
-			Op:         code.SUB,
-			Operand:    fromValAddr,
-			Comment:    fmt.Sprintf("subtract lower bound %d for array %s", arrSymbol.From, base),
-			HasOperand: true,
-		})
-	}
-
-	// Add the base address
 	t.emit(code.Instruction{
 		Op:         code.ADD,
-		Operand:    arrSymbol.Address,
-		Comment:    fmt.Sprintf("add base address %d for array %s", arrSymbol.Address, base),
 		HasOperand: true,
+		Operand:    indexSym.Address,
+		Comment:    "Add index offset",
 	})
 
-	// Store the computed address into a temporary cell
-	tempAddr := t.allocateTemp()
+	t.emit(code.Instruction{
+		Op:         code.LOADI,
+		HasOperand: true,
+
+		Operand: 0,
+		Comment: "Load array element",
+	})
+
 	t.emit(code.Instruction{
 		Op:         code.STORE,
-		Operand:    tempAddr,
-		Comment:    "store computed address into temp cell for STOREI",
 		HasOperand: true,
-	})
-
-	// Use STOREI to store ACC's value into the array element
-	t.emit(code.Instruction{
-		Op:         code.STOREI,
-		Operand:    tempAddr,
-		Comment:    fmt.Sprintf("store ACC into %s[%s]", base, index),
-		HasOperand: true,
+		Operand:    ins.Arg1.Address,
 	})
 
 	return nil
 }
 
-// allocateTemp allocates a new temporary cell and returns its address.
-func (t *Translator) allocateTemp() int {
-	t.tempCounter++
-	// Optionally, add to symbol table if needed
-	tempName := fmt.Sprintf("temp%d", t.tempCounter)
-	t.St.Declare(tempName, t.currentFunctionName, symboltable.Symbol{Name: tempName, Kind: symboltable.TEMP})
-	addr, _ := t.getAddr(tempName)
-	return addr
-}
-
-func (t *Translator) handleMod(dest, left, right, label string) error {
-	leftAddr, err := t.getAddr(left)
-	if err != nil {
-		return fmt.Errorf("failed to get left (%s) address: %v", left, err)
-	}
-	rightAddr, err := t.getAddr(right)
-	if err != nil {
-		return fmt.Errorf("failed to get right (%s) address: %v", left, err)
-	}
-	destAddr, err := t.getAddr(dest)
-	if err != nil {
-		return fmt.Errorf("failed to get dest (%s) address: %v", dest, err)
-	}
-	t.emit(code.Instruction{Op: code.LOAD, Comment: dest + " := " + left + " % " + right, HasOperand: true, Label: label, Operand: leftAddr})
-	t.emit(code.Instruction{Op: code.SUB, HasOperand: true, Operand: rightAddr})
-	t.emit(code.Instruction{Op: code.JNEG, HasOperand: true, Operand: 2})
-	t.emit(code.Instruction{Op: code.JUMP, HasOperand: true, Operand: -2})
-	t.emit(code.Instruction{Op: code.ADD, HasOperand: true, Operand: rightAddr})
-	t.emit(code.Instruction{Op: code.STORE, HasOperand: true, Operand: destAddr})
-	return nil
-}
-
-func (t *Translator) handleDiv(dest, left, right, label string) error {
+func (t *Translator) handleMod(ins tac.Instruction) error {
 	panic("unimplemented")
 }
 
-func (t *Translator) handleMul(dest, left, right, label string) error {
+func (t *Translator) handleDiv(ins tac.Instruction) error {
 	panic("unimplemented")
 }
 
-func (t *Translator) handleParam(param, label string) error {
-	paramAddr, err := t.getAddr(param)
-	if err != nil {
-		return fmt.Errorf("failed getting %s address: %v", param, err)
-	}
-	ins, _ := code.Make(code.SET, paramAddr)
-	ins.Label = label
-	ins.Comment = "param " + param
-	t.emit(*ins)
-	paramStore := t.St.CurrentOffset + t.paramCount
-	t.paramCount++
-	ins, _ = code.Make(code.STORE, paramStore)
-	t.emit(*ins)
-	return nil
+func (t *Translator) handleMul(ins tac.Instruction) error {
+	panic("unimplemented")
 }
 
-func (t *Translator) handleCall(funcName, paramCount, label string) error {
-	paramCountInt, err := strconv.Atoi(paramCount)
-	if err != nil {
-		return fmt.Errorf("failed to convert paramCount %s to int: %v", paramCount, err)
-	}
-	returnStore, err := t.St.Lookup(funcName+"_return", "xxFunctionsxx")
-	if err != nil {
-		return fmt.Errorf("failed to get return address of func %s: %v", funcName, err)
-	}
-	var arguments []symboltable.Symbol
-	for _, symbol := range t.St.Table[funcName] {
-		if symbol.Kind == symboltable.ARGUMENT {
-			arguments = append(arguments, symbol)
-		}
-	}
-	sort.Slice(arguments, func(i, j int) bool {
-		return arguments[i].ArgumentIndex < arguments[j].ArgumentIndex
-	})
+func (t *Translator) handleParam(param symboltable.Symbol, label string) error {
 
-	for i := paramCountInt; i > 0; i-- {
-		ins, _ := code.Make(code.LOAD, arguments[paramCountInt-i].Address)
-		ins.Label = label
-		ins.Comment = "call " + funcName + " " + paramCount
-		ins2, _ := code.Make(code.STORE, arguments[paramCountInt-i].Address)
-		t.emit(*ins)
-		t.emit(*ins2)
-	}
-	returnAddr := len(t.Output) + 3
-	ins3, _ := code.Make(code.SET, returnAddr)
-	ins4, _ := code.Make(code.STORE, returnStore.Address)
-	t.emit(*ins3)
-	t.emit(*ins4)
+	panic("unimplemented")
+}
 
-	ins5 := code.Instruction{Op: code.JUMP, Destination: funcName}
-	t.emit(ins5)
-	return nil
+func (t *Translator) handleCall(ins tac.Instruction) error {
+	panic("unimplemented")
 }
 
 func (t *Translator) handleRet(label string) error {
 	returnAddr, err := t.St.Lookup(t.currentFunctionName+"_return", "xxFunctionsxx")
 	if err != nil {
-		return fmt.Errorf("failed to get return for function %s: %v", t.currentFunctionName, err)
+		return fmt.Errorf("failed to get return for function %v: %v", t.currentFunctionName, err)
 	}
 	t.emit(code.Instruction{Op: code.RTRN, Comment: "ret", Label: label, HasOperand: true, Operand: returnAddr.Address})
 	return nil
@@ -1155,43 +827,37 @@ func (t *Translator) handleHalt(label string) {
 func (t *Translator) handleGoto(labelName, label string) {
 	t.emit(code.Instruction{Op: code.JUMP, Comment: "goto " + labelName, Label: label, HasOperand: true, Destination: labelName})
 }
-func (t *Translator) handleIf(op tac.Op, left, right, labelName, label string) error {
-	//   LOAD left
-	//   SUB right
-	//   then JNEG label, JPOSAlabel, JZERO label, etc. depending on op
+func (t *Translator) handleIf(ins tac.Instruction) error {
 
-	// 1) LOAD p0 = left
-	leftAddr, err := t.getAddr(left)
-	if err != nil {
-		return fmt.Errorf("failed to get left addr: %v", err)
-	}
-
-	rightAddr, err := t.getAddr(right)
-	if err != nil {
-		return fmt.Errorf("failed to get right addr: %v", err)
+	if ins.Arg1.IsTable && ins.Arg2.IsTable {
+		t.ArrayMinusArrayLoad(*ins.Arg1, *ins.Arg2, ins.Arg1Index, ins.Arg2Index, ins.Label)
+	} else if ins.Arg2.IsTable {
+		t.VarMinusArrayLoad(*ins.Arg1, *ins.Arg2, ins.Arg2Index, ins.Label)
+	} else if ins.Arg1.IsTable {
+		t.ArrayMinusVarLoad(*ins.Arg1, *ins.Arg2, ins.Arg1Index, ins.Label)
+	} else {
+		t.VarMinusVarLoad(*ins.Arg1, *ins.Arg2, ins.Label)
 	}
 	// 3) Jump if condition is satisfied
 	var jumpIns *code.Instruction
 	var jumpIns2 *code.Instruction
-	switch op {
+	switch ins.Op {
 	case tac.OpIfLT:
-		jumpIns = &code.Instruction{Op: code.JNEG, HasOperand: true, Destination: labelName}
+		jumpIns = &code.Instruction{Op: code.JNEG, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
 	case tac.OpIfLE:
-		jumpIns = &code.Instruction{Op: code.JNEG, HasOperand: true, Destination: labelName}
-		jumpIns2 = &code.Instruction{Op: code.JZERO, HasOperand: true, Destination: labelName}
+		jumpIns = &code.Instruction{Op: code.JNEG, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
+		jumpIns2 = &code.Instruction{Op: code.JZERO, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
 	case tac.OpIfGT:
-		jumpIns = &code.Instruction{Op: code.JPOS, HasOperand: true, Destination: labelName}
+		jumpIns = &code.Instruction{Op: code.JPOS, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
 	case tac.OpIfGE:
-		jumpIns = &code.Instruction{Op: code.JPOS, HasOperand: true, Destination: labelName}
-		jumpIns2 = &code.Instruction{Op: code.JZERO, HasOperand: true, Destination: labelName}
+		jumpIns = &code.Instruction{Op: code.JPOS, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
+		jumpIns2 = &code.Instruction{Op: code.JZERO, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
 	case tac.OpIfEQ:
-		jumpIns = &code.Instruction{Op: code.JZERO, HasOperand: true, Destination: labelName}
+		jumpIns = &code.Instruction{Op: code.JZERO, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
 	case tac.OpIfNE:
-		jumpIns = &code.Instruction{Op: code.JPOS, HasOperand: true, Destination: labelName}
-		jumpIns2 = &code.Instruction{Op: code.JNEG, HasOperand: true, Destination: labelName}
+		jumpIns = &code.Instruction{Op: code.JPOS, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
+		jumpIns2 = &code.Instruction{Op: code.JNEG, HasOperand: true, Comment: "to " + ins.Label, Destination: ins.JumpTo}
 	}
-	t.emit(code.Instruction{Op: code.LOAD, Comment: string(op) + " " + left + " " + right, HasOperand: true, Label: label, Operand: leftAddr})
-	t.emit(code.Instruction{Op: code.SUB, HasOperand: true, Operand: rightAddr})
 	if jumpIns != nil {
 		t.emit(*jumpIns)
 	}
@@ -1237,31 +903,4 @@ func (t *Translator) getSymbol(name string) (*symboltable.Symbol, error) {
 		return nil, fmt.Errorf("failed to find addr for %q: %v", name, err)
 	}
 	return symbol, nil
-}
-
-func (t *Translator) getAddr(name string) (int, error) {
-	_, err := strconv.Atoi(name)
-	if err == nil {
-		symbol, err := t.St.Lookup(name, "main")
-		if err != nil {
-			return 0, fmt.Errorf("failed to find addr for %q: %v", name, err)
-		}
-		return symbol.Address, nil
-	}
-	if strings.Contains(name, ".") {
-		parts := strings.SplitN(name, ".", 2)
-		proc := parts[0]
-		sym := parts[1]
-		symbol, err := t.St.Lookup(sym, proc)
-		if err != nil {
-			return 0, fmt.Errorf("failed to find addr for %q: %v", name, err)
-		}
-		return symbol.Address, nil
-	}
-
-	symbol, err := t.St.Lookup(name, t.currentFunctionName)
-	if err != nil {
-		return 0, fmt.Errorf("failed to find addr for %q: %v", name, err)
-	}
-	return symbol.Address, nil
 }

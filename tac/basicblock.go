@@ -78,7 +78,7 @@ func BuildFlowGraph(blocks []BasicBlock) []BasicBlock {
 
 		switch lastIns.Op {
 		case OpGoto:
-			if target := labelToBlock[lastIns.Destination]; target != nil {
+			if target := labelToBlock[lastIns.JumpTo]; target != nil {
 				successors = append(successors, target)
 			}
 
@@ -86,7 +86,7 @@ func BuildFlowGraph(blocks []BasicBlock) []BasicBlock {
 			// Conditional branch has two successors:
 			// 1. The explicit target block
 			// 2. Implicit fall-through to next block
-			if target := labelToBlock[lastIns.Destination]; target != nil {
+			if target := labelToBlock[lastIns.JumpTo]; target != nil {
 				successors = append(successors, target)
 			}
 			if i+1 < len(blocks) {

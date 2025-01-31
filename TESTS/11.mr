@@ -1,0 +1,57 @@
+SET 2
+STORE 12
+PUT 12
+HALT
+JPOS 6       #NO-OPT MOD  
+SET 0        #NO-OPT MOD
+SUB 9        #NO-OPT MOD
+STORE 9      #NO-OPT MOD  
+SET 1        #NO-OPT MOD 
+JUMP 2       #NO-OPT MOD  
+SET 0        #NO-OPT MOD
+STORE 6      #NO-OPT MOD  
+LOAD 10      #NO-OPT MOD  
+JPOS 6       #NO-OPT MOD  
+SET 0        #NO-OPT MOD
+SUB 10       #NO-OPT MOD 
+STORE 10     #NO-OPT MOD   
+SET 1        #NO-OPT MOD 
+JUMP 2       #NO-OPT MOD  
+SET 0        #NO-OPT MOD
+STORE 7      #NO-OPT MOD  
+LOAD 10      #NO-OPT MOD  
+STORE 5      #NO-OPT MOD  
+LOAD 5       #NO-OPT MOD 
+ADD 5        #NO-OPT MOD
+STORE 5      #NO-OPT MOD  
+SUB 9        #NO-OPT MOD
+JPOS 2       #NO-OPT MOD 
+JUMP -5      #NO-OPT MOD   
+LOAD 5       #NO-OPT MOD 
+HALF         #NO-OPT MOD
+STORE 5      #NO-OPT MOD  
+SUB 9        #NO-OPT MOD
+JPOS 5       #NO-OPT MOD  
+LOAD 9       #NO-OPT MOD 
+SUB 5        #NO-OPT MOD
+STORE 9      #NO-OPT MOD  
+JUMP 2       #NO-OPT MOD  
+LOAD 9       #NO-OPT MOD 
+SUB 10       #NO-OPT MOD 
+JNEG 2       #NO-OPT MOD 
+JUMP -12     #NO-OPT MOD    
+LOAD 9       #NO-OPT MOD
+JZERO 12     #NO-OPT MOD
+LOAD 6       #NO-OPT MOD 
+JZERO 4      #NO-OPT MOD   
+LOAD 10      #NO-OPT MOD  
+SUB 9        #NO-OPT MOD
+STORE 9      #NO-OPT MOD  
+LOAD 7       #NO-OPT MOD 
+JZERO 4      #NO-OPT MOD   
+LOAD 9       #NO-OPT MOD 
+SUB 10       #NO-OPT MOD 
+JUMP 2       #NO-OPT MOD
+LOAD 9       #NO-OPT MOD
+RTRN 8       #NO-OPT MOD
+

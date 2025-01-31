@@ -17,15 +17,13 @@ type Generator struct {
 	labelCount int
 	tempCount  int
 
-	currentMemoryOffset int
-	currentProc         string
+	currentProc string
 }
 
 func NewGenerator() *Generator {
 	return &Generator{
-		SymbolTable:         symboltable.New(),
-		Errors:              make([]string, 0),
-		currentMemoryOffset: 1,
+		SymbolTable: symboltable.New(),
+		Errors:      make([]string, 0),
 	}
 }
 
@@ -38,14 +36,15 @@ func (g *Generator) newLabel() string {
 	return fmt.Sprintf("L%d", g.labelCount)
 }
 
-func (g *Generator) newTemp() string {
+func (g *Generator) newTemp() *symboltable.Symbol {
 	g.tempCount++
 	name := fmt.Sprintf("t%d", g.tempCount)
-	g.SymbolTable.Declare(name, g.currentProc, symboltable.Symbol{
+
+	sym, _ := g.SymbolTable.Declare(name, g.currentProc, symboltable.Symbol{
 		Name: name,
 		Kind: symboltable.TEMP,
 	})
-	return fmt.Sprintf("t%d", g.tempCount)
+	return sym
 }
 
 func opFromToken(tk ast.MathExpression) Op {
@@ -67,17 +66,24 @@ func opFromToken(tk ast.MathExpression) Op {
 }
 
 func (g *Generator) Generate(node ast.Node) error {
+	fmt.Printf("# Generating node of type %T\n", node)
 	switch node := node.(type) {
 	case *ast.Program:
 		g.SymbolTable.Declare("1", "main", symboltable.Symbol{Name: "1", Kind: symboltable.CONSTANT})
-		g.emit(Instruction{Op: OpGoto, Destination: "main"})
+		g.emit(Instruction{Op: OpGoto, JumpTo: "main"})
 		for _, procedure := range node.Procedures {
 			if procedure != nil {
-				_ = g.Generate(procedure)
+				err := g.Generate(procedure)
+				if err != nil {
+					g.Errors = append(g.Errors, fmt.Sprintf("failed to generate procedure: %v", err))
+				}
 			}
 		}
 		if node.Main != nil {
-			_ = g.Generate(node.Main)
+			err := g.Generate(node.Main)
+			if err != nil {
+				g.Errors = append(g.Errors, fmt.Sprintf("failed to generate main: %v", err))
+			}
 		}
 		g.emit(Instruction{
 			Op: OpHalt,
@@ -110,6 +116,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		}
 		g.emit(Instruction{Op: OpRet})
 		g.currentProc = oldProc
+
 	case *ast.Main:
 		oldProc := g.currentProc
 		g.currentProc = "main"
@@ -132,26 +139,73 @@ func (g *Generator) Generate(node ast.Node) error {
 		// 1. Generate a place (temp or variable) for the right-hand side
 		place, err := g.generateMathExpression(&node.MathExpression)
 		if err != nil {
-			g.Errors = append(g.Errors, err.Error())
 			return nil // or return err, up to you
 		}
-
-		// 2. Emit a final assignment: identifier = place
-		qualifiedDest := g.qualifyVar(node.Identifier.String())
-		g.emit(Instruction{
-			Op:          OpAssign,
-			Destination: qualifiedDest,
-			Arg1:        place,
-		})
-	case *ast.WriteCommand:
-		val := g.qualifyVarOrNumber(node.Value.String())
-		if isNumber(val) {
-			g.SymbolTable.Declare(val, "main", symboltable.Symbol{Name: val, Kind: symboltable.CONSTANT})
+		if place == nil {
+			return fmt.Errorf("failed to generate RHS for assignment")
 		}
-		g.emit(Instruction{Op: OpWrite, Arg1: val})
+		// 2. Emit a final assignment: identifier = place
+		idSymbol, err := g.SymbolTable.Lookup(node.Identifier.Value, g.currentProc)
+		if err != nil {
+			return fmt.Errorf("failed to lookup for idSymbol: %v", err)
+		}
+		if isNumber(node.Identifier.Index) {
+			g.SymbolTable.Declare(node.Identifier.Index, "main", symboltable.Symbol{Name: node.Identifier.Index, Kind: symboltable.CONSTANT})
+		}
+		if idSymbol.IsTable {
+			g.emit(Instruction{
+				Op:        OpAssign,
+				Arg1:      idSymbol,
+				Arg1Index: node.Identifier.Index,
+				Arg2:      place,
+			})
+		} else {
+			if idSymbol == nil {
+				return fmt.Errorf("nil idSymbol")
+			}
+			g.emit(Instruction{
+				Op:   OpAssign,
+				Arg1: idSymbol,
+				Arg2: place,
+			})
+		}
+
+	case *ast.WriteCommand:
+		fmt.Printf("# WRI1TE %v\n", node)
+		val := node.Value
+
+		var sym *symboltable.Symbol
+		var err error
+		if isNumber(val.String()) {
+			sym, err = g.SymbolTable.Declare(val.String(), "main", symboltable.Symbol{Name: val.String(), Kind: symboltable.CONSTANT})
+			if err != nil {
+			}
+			g.emit(Instruction{Op: OpWrite, Arg1: sym})
+
+			return nil
+		}
+		switch value := val.(type) {
+		case *ast.Identifier:
+			sym, err = g.SymbolTable.Lookup(value.Value, g.currentProc)
+			if err != nil {
+				return fmt.Errorf("failed to generate Write for %v: %v", node, err)
+			}
+			g.emit(Instruction{Op: OpWrite, Arg1: sym, Arg1Index: value.Index})
+		}
 	case *ast.ReadCommand:
-		ident := g.qualifyVar(node.Identifier.String())
-		g.emit(Instruction{Op: OpRead, Arg1: ident})
+		val := node.Identifier
+		var sym *symboltable.Symbol
+		if isNumber(val.String()) {
+			sym, _ = g.SymbolTable.Declare(val.Value, "main", symboltable.Symbol{Name: val.Value, Kind: symboltable.CONSTANT})
+			g.emit(Instruction{Op: OpRead, Arg1: sym})
+			return nil
+		}
+		sym, _ = g.SymbolTable.Lookup(val.Value, g.currentProc)
+		if isNumber(val.Index) {
+			g.SymbolTable.Declare(val.Index, "main", symboltable.Symbol{Name: val.Index, Kind: symboltable.CONSTANT})
+		}
+		g.emit(Instruction{Op: OpRead, Arg1: sym, Arg1Index: val.Index})
+
 	case *ast.WhileCommand:
 		labelStart := g.newLabel() // e.g. "L1"
 		labelBody := g.newLabel()  // e.g. "L2"
@@ -159,77 +213,90 @@ func (g *Generator) Generate(node ast.Node) error {
 
 		// 2. Emit labelStart at the top of the loop
 		g.emit(Instruction{Label: labelStart})
+
 		err := g.generateCondition(node.Condition, labelBody, labelEnd)
 		if err != nil {
-			g.Errors = append(g.Errors, err.Error())
-			return nil
+			return err
 		}
 		g.emit(Instruction{Label: labelBody})
+
 		for _, cmd := range node.Commands {
 			if err := g.Generate(cmd); err != nil {
 				g.Errors = append(g.Errors, err.Error())
 			}
 		}
+
 		g.emit(Instruction{
-			Op:          OpGoto,
-			Destination: labelStart,
+			Op:     OpGoto,
+			JumpTo: labelStart,
 		})
 		g.emit(Instruction{Label: labelEnd})
 
 	case *ast.ForCommand:
 		iteratorName := node.Iterator.Value
-		g.SymbolTable.Declare(iteratorName, g.currentProc, symboltable.Symbol{Name: iteratorName, Kind: symboltable.DECLARATION})
+		iteratorSymbol, _ := g.SymbolTable.Declare(iteratorName, g.currentProc, symboltable.Symbol{Name: iteratorName, Kind: symboltable.DECLARATION})
 
 		startVal := node.From.String()
 		endVal := node.To.String()
 		// TODO: this may be a table to check for being a table
+		var startSymbol *symboltable.Symbol
 		_, err := strconv.Atoi(startVal)
 		if err == nil {
-			g.SymbolTable.Declare(startVal, "main", symboltable.Symbol{Name: startVal, Kind: symboltable.CONSTANT})
+			startSymbol, _ = g.SymbolTable.Declare(startVal, "main", symboltable.Symbol{Name: startVal, Kind: symboltable.CONSTANT})
 		} else {
-			g.SymbolTable.Declare(startVal, g.currentProc, symboltable.Symbol{Name: startVal, Kind: symboltable.DECLARATION})
+			startSymbol, _ = g.SymbolTable.Declare(startVal, g.currentProc, symboltable.Symbol{Name: startVal, Kind: symboltable.DECLARATION})
 		}
+		if startSymbol == nil {
+			return fmt.Errorf("nil startSymbol")
+		}
+		var endSymbol *symboltable.Symbol
 		_, err = strconv.Atoi(endVal)
 		if err == nil {
-			g.SymbolTable.Declare(endVal, "main", symboltable.Symbol{Name: endVal, Kind: symboltable.CONSTANT})
+			endSymbol, _ = g.SymbolTable.Declare(endVal, "main", symboltable.Symbol{Name: endVal, Kind: symboltable.CONSTANT})
 		} else {
-			g.SymbolTable.Declare(endVal, g.currentProc, symboltable.Symbol{Name: endVal, Kind: symboltable.DECLARATION})
+			endSymbol, _ = g.SymbolTable.Declare(endVal, g.currentProc, symboltable.Symbol{Name: endVal, Kind: symboltable.DECLARATION})
 		}
 
+		oneSymbol, err := g.SymbolTable.Lookup("1", "main")
+		if err != nil {
+			return fmt.Errorf("failed to lookup symbol 1")
+		}
+		if iteratorSymbol == nil {
+			return fmt.Errorf("nil iteratorSymbol")
+		}
 		labelTest := g.newLabel() // e.g. "L1"
 		labelBody := g.newLabel() // e.g. "L2"
 		labelEnd := g.newLabel()  // e.g. "L3"
-
 		g.emit(Instruction{
-			Op:          OpAssign, // "="
-			Destination: iteratorName,
-			Arg1:        startVal,
+			Op:   OpAssign, // "="
+			Arg1: iteratorSymbol,
+			Arg2: startSymbol,
 		})
 		g.emit(Instruction{
-			Op:          OpGoto,
-			Destination: labelTest,
+			Op:     OpGoto,
+			JumpTo: labelTest,
 		})
 		g.emit(Instruction{Label: labelTest})
 		if !node.IsDownTo {
 			// ascending
 			g.emit(Instruction{
-				Op:          OpIfLE, // "if<="
-				Arg1:        iteratorName,
-				Arg2:        endVal,
-				Destination: labelBody,
+				Op:     OpIfLE, // "if<="
+				Arg1:   iteratorSymbol,
+				Arg2:   endSymbol,
+				JumpTo: labelBody,
 			})
 		} else {
 			// descending
 			g.emit(Instruction{
-				Op:          OpIfGE, // "if>="
-				Arg1:        iteratorName,
-				Arg2:        endVal,
-				Destination: labelBody,
+				Op:     OpIfGE, // "if>="
+				Arg1:   iteratorSymbol,
+				Arg2:   endSymbol,
+				JumpTo: labelBody,
 			})
 		}
 		g.emit(Instruction{
-			Op:          OpGoto,
-			Destination: labelEnd,
+			Op:     OpGoto,
+			JumpTo: labelEnd,
 		})
 		g.emit(Instruction{Label: labelBody})
 		for _, cmd := range node.Commands {
@@ -243,14 +310,14 @@ func (g *Generator) Generate(node ast.Node) error {
 			g.emit(Instruction{
 				Op:          OpAdd, // "tX = i + 1"
 				Destination: tmp,
-				Arg1:        iteratorName,
-				Arg2:        "1",
+				Arg1:        iteratorSymbol,
+				Arg2:        oneSymbol,
 			})
 			// i = tX
 			g.emit(Instruction{
-				Op:          OpAssign,
-				Destination: iteratorName,
-				Arg1:        tmp,
+				Op:   OpAssign,
+				Arg1: iteratorSymbol,
+				Arg2: tmp,
 			})
 		} else {
 			// i = i - 1
@@ -258,31 +325,32 @@ func (g *Generator) Generate(node ast.Node) error {
 			g.emit(Instruction{
 				Op:          OpSub, // "tX = i - 1"
 				Destination: tmp,
-				Arg1:        iteratorName,
-				Arg2:        "1",
+				Arg1:        iteratorSymbol,
+				Arg2:        oneSymbol,
 			})
 			g.emit(Instruction{
-				Op:          OpAssign,
-				Destination: iteratorName,
-				Arg1:        tmp,
+				Op:   OpAssign,
+				Arg1: iteratorSymbol,
+				Arg2: tmp,
 			})
 		}
 
 		// 9. Jump back to labelTest
 		g.emit(Instruction{
-			Op:          OpGoto,
-			Destination: labelTest,
+			Op:     OpGoto,
+			JumpTo: labelTest,
 		})
 		g.emit(Instruction{Label: labelEnd})
 	case *ast.ProcCallCommand:
+		funcSym, _ := g.SymbolTable.Lookup(node.Name.String(), "xxFunctionsxx")
 		for _, arg := range node.Args {
 			argName := arg.String()
 			symbol, err := g.SymbolTable.Lookup(argName, g.currentProc)
 			if err == nil {
 				g.emit(Instruction{
 					Op:   OpParam,
-					Arg1: g.qualifyVarOrNumber(argName),
-					Arg2: fmt.Sprintf("%d", symbol.ArgCount),
+					Arg1: funcSym,
+					Arg2: symbol,
 				})
 			} else {
 				fmt.Printf("failed calling %s: %v\n", argName, err)
@@ -292,12 +360,12 @@ func (g *Generator) Generate(node ast.Node) error {
 
 		procName := node.Name.String()
 		numArgs := len(node.Args)
-		_, err := g.SymbolTable.Lookup(procName, "xxFunctionsxx")
+		symbol, err := g.SymbolTable.Declare(fmt.Sprintf("%d", numArgs), "main", symboltable.Symbol{Name: fmt.Sprintf("%d", numArgs), Kind: symboltable.CONSTANT})
 		if err == nil {
 			g.emit(Instruction{
 				Op:   OpCall,
-				Arg1: procName, // the procedure label/name
-				Arg2: fmt.Sprintf("%d", numArgs),
+				Arg1: funcSym, // the procedure label/name
+				Arg2: symbol,
 			})
 		} else {
 			fmt.Printf("failed calling %s: %v\n", procName, err)
@@ -320,8 +388,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		//    If the condition is true, jump to labelEnd; otherwise jump to labelStart
 		err := g.generateCondition(node.Condition, labelEnd, labelStart)
 		if err != nil {
-			g.Errors = append(g.Errors, err.Error())
-			return nil
+			return err
 		}
 
 		// 5. Emit labelEnd (the exit point)
@@ -343,8 +410,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		//    "goto labelElse"
 		err := g.generateCondition(node.Condition, labelThen, labelElse)
 		if err != nil {
-			g.Errors = append(g.Errors, err.Error())
-			return nil
+			return err
 		}
 
 		g.emit(Instruction{Label: labelThen})
@@ -356,8 +422,8 @@ func (g *Generator) Generate(node ast.Node) error {
 
 		if hasElse {
 			g.emit(Instruction{
-				Op:          OpGoto,
-				Destination: labelEnd,
+				Op:     OpGoto,
+				JumpTo: labelEnd,
 			})
 			g.emit(Instruction{
 				Label: labelElse,
@@ -440,6 +506,9 @@ func hasDot(str string) bool {
 	}()
 }
 func MergeLabelOnlyInstructions(inss []Instruction) []Instruction {
+	// for _, ins := range inss {
+	// 	fmt.Println(ins)
+	// }
 	var result []Instruction
 	i := 0
 	for i < len(inss) {
@@ -447,12 +516,7 @@ func MergeLabelOnlyInstructions(inss []Instruction) []Instruction {
 
 		// Check if it's really just a "label" line,
 		// i.e. it has a label and absolutely no other data.
-		isLabelOnly := (ins.Label != "" &&
-			ins.Op == "" &&
-			ins.Arg1 == "" &&
-			ins.Arg2 == "" &&
-			ins.Destination == "")
-
+		isLabelOnly := (ins.Label != "" && ins.Op == "")
 		if isLabelOnly {
 			// Merge this label with the *next* instruction if one exists
 			if i+1 < len(inss) {
@@ -500,16 +564,16 @@ func (g *Generator) generateCondition(cond ast.Condition, labelTrue, labelFalse 
 	//    if< left, right => labelTrue
 	//    goto labelFalse
 	g.emit(Instruction{
-		Op:          op,
-		Arg1:        left,
-		Arg2:        right,
-		Destination: labelTrue,
+		Op:     op,
+		Arg1:   &left,
+		Arg2:   &right,
+		JumpTo: labelTrue,
 	})
 
 	// Unconditional jump to labelFalse
 	g.emit(Instruction{
-		Op:          OpGoto,
-		Destination: labelFalse,
+		Op:     OpGoto,
+		JumpTo: labelFalse,
 	})
 	return nil
 }
@@ -533,17 +597,17 @@ func mapConditionOp(op string) (Op, error) {
 	return "", fmt.Errorf("unknown condition operator %q", op)
 }
 
-// generateValue returns a string “place” for the given Value.
+// generateValue returns a symbol “place” for the given Value.
 // If it’s just a number literal or identifier, we can return the string directly.
 // If your language has array-index computations, you’d handle them here.
 // generateValue returns a string “place” for the given Value.
 // If it’s an array reference, it emits instructions to compute the address and load the value.
-func (g *Generator) generateValue(v ast.Value) (string, error) {
+func (g *Generator) generateValue(v ast.Value) (symboltable.Symbol, error) {
 	switch val := v.(type) {
 	case *ast.NumberLiteral:
 		numStr := val.String()
 		// Declare the number as a constant
-		g.SymbolTable.Declare(numStr, "main", symboltable.Symbol{
+		sym, _ := g.SymbolTable.Declare(numStr, "main", symboltable.Symbol{
 			Name: numStr,
 			Kind: symboltable.CONSTANT,
 		})
@@ -555,35 +619,65 @@ func (g *Generator) generateValue(v ast.Value) (string, error) {
 				Kind: symboltable.CONSTANT,
 			})
 		}
-		return numStr, nil
+		return *sym, nil
 
 	case *ast.Identifier:
+		// Handle array indices
+		if val.Index != "" {
+			// Generate code for array element access
+			arrSym, err := g.SymbolTable.Lookup(val.Value, g.currentProc)
+			if err != nil {
+				return symboltable.Symbol{}, err
+			}
 
-		return g.qualifyVar(val.String()), nil
+			// Create temporary for the loaded value
+			tmp := g.newTemp()
+
+			// Generate index calculation
+			indexSym, err := g.SymbolTable.Lookup(val.Index, g.currentProc)
+			if err != nil {
+				return symboltable.Symbol{}, err
+			}
+
+			// Emit array load instructions
+			g.emit(Instruction{
+				Op:        OpArrayLoad,
+				Arg1:      tmp,
+				Arg2:      arrSym,
+				Arg2Index: indexSym.Name,
+			})
+
+			return *tmp, nil
+		}
+		sym, err := g.SymbolTable.Lookup(val.String(), g.currentProc)
+		if err != nil {
+			return symboltable.Symbol{}, fmt.Errorf("failed to lookup symbol %s :%v", v.String(), err)
+		}
+		return *sym, nil
 
 	default:
-		return "", fmt.Errorf("unhandled Value type %T", v)
+		return symboltable.Symbol{}, fmt.Errorf("unhandled Value type %T", v)
 	}
 }
 
 // generateMathExpression returns the place holding the result of the expression.
 // If expression.Right is nil, there's no operator, so just return Left's place.
 // Otherwise, emit an instruction to combine Left and Right.
-func (g *Generator) generateMathExpression(me *ast.MathExpression) (string, error) {
+func (g *Generator) generateMathExpression(me *ast.MathExpression) (*symboltable.Symbol, error) {
 	leftPlace, err := g.generateValue(me.Left)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// If there's no operator, it's just a single operand
 	if me.Right == nil {
-		return leftPlace, nil
+		return &leftPlace, nil
 	}
 
 	// We have an operator and a right operand
 	rightPlace, err := g.generateValue(me.Right)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Create a fresh temporary for the operation result
@@ -597,8 +691,8 @@ func (g *Generator) generateMathExpression(me *ast.MathExpression) (string, erro
 	g.emit(Instruction{
 		Op:          op,
 		Destination: tmp,
-		Arg1:        leftPlace,
-		Arg2:        rightPlace,
+		Arg1:        &leftPlace,
+		Arg2:        &rightPlace,
 	})
 
 	return tmp, nil
@@ -621,40 +715,35 @@ func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error
 		Name:          name,
 		Kind:          symboltable.ARGUMENT,
 		IsTable:       isTable,
-		Address:       g.currentMemoryOffset,
 		ArgumentIndex: argCount + 1,
 	}
-	err := g.SymbolTable.Declare(name, procName, symbol)
+	_, err := g.SymbolTable.Declare(name, procName, symbol)
 	if err != nil {
 		return fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName, err)
 	}
-	g.currentMemoryOffset++
 	return nil
 }
 
 func (g *Generator) DeclareProcedure(decl ast.Declaration, procName string) error {
 	name := decl.Pidentifier.Value
 	symbol := symboltable.Symbol{
-		Name:    name,
-		Kind:    symboltable.DECLARATION,
-		Address: g.currentMemoryOffset,
+		Name: name,
+		Kind: symboltable.DECLARATION,
 	}
 	got, _ := g.SymbolTable.Lookup(name, procName)
 	if got == nil {
-		err := g.SymbolTable.Declare(name, procName, symbol)
+		_, err := g.SymbolTable.Declare(name, procName, symbol)
 		if err != nil {
 			return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName, err)
 		}
 	}
 
-	g.currentMemoryOffset++
 	return nil
 }
 
 func (g *Generator) DeclareMain(decl ast.Declaration) error {
 	name := decl.Pidentifier.Value
 	var symbol symboltable.Symbol
-	var nextMemory int
 	if decl.IsTable {
 		from, err := strconv.Atoi(decl.From.Value)
 		g.SymbolTable.Declare(decl.From.Value, "main", symboltable.Symbol{Name: decl.From.Value, Kind: symboltable.CONSTANT})
@@ -673,21 +762,16 @@ func (g *Generator) DeclareMain(decl ast.Declaration) error {
 			From:    from,
 			To:      to,
 			Size:    to - from + 1,
-			Address: g.currentMemoryOffset,
 		}
-		nextMemory = g.currentMemoryOffset + symbol.Size
 	} else {
 		symbol = symboltable.Symbol{
-			Name:    name,
-			Kind:    symboltable.DECLARATION,
-			Address: g.currentMemoryOffset,
+			Name: name,
+			Kind: symboltable.DECLARATION,
 		}
-		nextMemory = g.currentMemoryOffset + 1
 	}
-	err := g.SymbolTable.Declare(name, "main", symbol)
+	_, err := g.SymbolTable.Declare(name, "main", symbol)
 	if err != nil {
 		return fmt.Errorf("failed to declare in main: %v", err)
 	}
-	g.currentMemoryOffset = nextMemory
 	return nil
 }

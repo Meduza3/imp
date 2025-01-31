@@ -200,14 +200,14 @@ func StartFile(filepath string, out io.Writer) {
 	p := parser.New(l)
 	fmt.Print("# parsing program...		")
 	program := p.ParseProgram()
-	fmt.Println("parsed. ")
+	fmt.Println("# parsed. ")
 	for _, err := range p.Errors() {
 		fmt.Printf("# parse Error: %s\n", err)
 	}
 	g := tac.NewGenerator()
 	fmt.Printf("# generating TAC...		")
 	g.Generate(program)
-	fmt.Println("generated. ")
+	fmt.Println("# generated. ")
 	blocks := tac.SplitIntoBasicBlocks(g.Instructions)
 	blocks = tac.BuildFlowGraph(blocks)
 	// for _, block := range blocks {
@@ -224,8 +224,9 @@ func StartFile(filepath string, out io.Writer) {
 	// }
 	g.Instructions = tac.MergeLabelOnlyInstructions(g.Instructions)
 
-	blocks = tac.SplitIntoBasicBlocks(g.Instructions)
-	blocks = tac.BuildFlowGraph(blocks)
+	for _, err := range g.Errors {
+		fmt.Printf("# Generator Error: %s\n", err)
+	}
 	translator := translator.New(*g.SymbolTable)
 	fmt.Println("# Translating TAC...		")
 	translator.Translate(g.Instructions)

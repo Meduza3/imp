@@ -6,7 +6,7 @@ import (
 )
 
 type SymbolTable struct {
-	Table         map[string]map[string]Symbol
+	Table         map[string]map[string]*Symbol
 	CurrentOffset int
 }
 
@@ -43,37 +43,41 @@ type Symbol struct {
 }
 
 func New() *SymbolTable {
-	pt := make(map[string]map[string]Symbol)
-	pt["main"] = make(map[string]Symbol)
+	pt := make(map[string]map[string]*Symbol)
+	pt["main"] = make(map[string]*Symbol)
 	return &SymbolTable{
 		Table:         pt,
 		CurrentOffset: 100,
 	}
 }
-func (st *SymbolTable) Declare(name, procedureName string, symbol Symbol) error {
+func (st *SymbolTable) Declare(name, procedureName string, symbol Symbol) (*Symbol, error) {
+	// 1. Ensure the procedure map exists.
 	if st.Table[procedureName] == nil {
-		st.Table[procedureName] = make(map[string]Symbol)
-		symbol.Address = st.CurrentOffset
-		st.Table[procedureName][name] = symbol
-		if symbol.Size > 0 {
-			st.CurrentOffset += symbol.Size
-		} else {
-			st.CurrentOffset++
-		}
-	}
-	got, ok := st.Table[procedureName][name]
-	if ok {
-		return fmt.Errorf("failed to declare for procedure %s for %q, already declared: %v", procedureName, name, got)
+		st.Table[procedureName] = make(map[string]*Symbol)
 	}
 
-	symbol.Address = st.CurrentOffset
-	st.Table[procedureName][name] = symbol
+	// 2. Check if it's already declared.
+	if got, ok := st.Table[procedureName][name]; ok {
+		return got, fmt.Errorf(
+			"failed to declare symbol %q in procedure %q: already declared",
+			name, procedureName,
+		)
+	}
+
+	// 3. Assign address, store in the table, update offset.
+	if symbol.IsTable {
+		symbol.Address = st.CurrentOffset - symbol.From
+	} else {
+		symbol.Address = st.CurrentOffset
+	}
+	st.Table[procedureName][name] = &symbol
+
 	if symbol.Size > 0 {
 		st.CurrentOffset += symbol.Size
 	} else {
 		st.CurrentOffset++
 	}
-	return nil
+	return st.Table[procedureName][name], nil
 }
 
 // Lookup searches for a symbol in the main table and specific procedure table (if given).
@@ -81,14 +85,14 @@ func (st *SymbolTable) Lookup(name, procedureName string) (*Symbol, error) {
 	if procedureName != "" {
 		if procedureSymbols, ok := st.Table[procedureName]; ok {
 			if symbol, ok := procedureSymbols[name]; ok {
-				return &symbol, nil
+				return symbol, nil
 			}
 		}
 		return nil, fmt.Errorf("symbol %q not found in procedure %q", name, procedureName)
 	}
 
 	if symbol, ok := st.Table["main"][name]; ok {
-		return &symbol, nil
+		return symbol, nil
 	}
 	return nil, fmt.Errorf("symbol %q not found in main table", name)
 }

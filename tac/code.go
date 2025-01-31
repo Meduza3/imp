@@ -3,6 +3,8 @@ package tac
 import (
 	"fmt"
 	"strings"
+
+	"github.com/Meduza3/imp/symboltable"
 )
 
 type Op string
@@ -35,15 +37,19 @@ const (
 	OpParam Op = "param"
 	OpCall  Op = "call"
 
-	OpRet  Op = "ret"
-	OpHalt Op = "halt"
+	OpRet       Op = "ret"
+	OpArrayLoad Op = "arrayLoad"
+	OpHalt      Op = "halt"
 )
 
 type Instruction struct {
 	Op          Op
-	Destination string
-	Arg1        string
-	Arg2        string
+	JumpTo      string
+	Destination *symboltable.Symbol
+	Arg1        *symboltable.Symbol
+	Arg1Index   string
+	Arg2        *symboltable.Symbol
+	Arg2Index   string
 	Label       string
 }
 
@@ -56,30 +62,43 @@ func (ins Instruction) String() string {
 	case OpAssign:
 		// For a direct assignment, we only need Destination = Arg1
 		// Example: "x = t1"
-		parts = append(parts, fmt.Sprintf("%s = %s", ins.Destination, ins.Arg1))
+		if ins.Arg1Index != "" {
+			parts = append(parts, fmt.Sprintf("%s[%s] = ", ins.Arg1.Name, ins.Arg1Index))
+		} else {
+			parts = append(parts, fmt.Sprintf("%s = ", ins.Arg1.Name))
+		}
+		if ins.Arg2Index != "" {
+			parts = append(parts, fmt.Sprintf("%s[%s]", ins.Arg2.Name, ins.Arg2Index))
+		} else {
+			parts = append(parts, fmt.Sprintf("%s", ins.Arg2.Name))
+		}
 
 	case OpAdd, OpSub, OpMul, OpDiv, OpMod:
 		// For arithmetic, we use three-address style: Destination = Arg1 op Arg2
 		// Example: "t1 = x + y"
-		parts = append(parts, fmt.Sprintf("%s = %s %s %s", ins.Destination, ins.Arg1, ins.Op, ins.Arg2))
+		parts = append(parts, fmt.Sprintf("%s = %s %s %s", ins.Destination.Name, ins.Arg1.Name, ins.Op, ins.Arg2.Name))
 
 	case OpGoto:
-		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Destination))
+		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.JumpTo))
 
 	// conditional jumps
 	case OpIfEQ, OpIfNE, OpIfLT, OpIfLE, OpIfGT, OpIfGE:
-		parts = append(parts, fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1, ins.Arg2, ins.Destination))
+		parts = append(parts, fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1.Name, ins.Arg2.Name, ins.JumpTo))
 
 	case OpCall:
-		parts = append(parts, fmt.Sprintf("%s %s %s", ins.Op, ins.Arg1, ins.Arg2))
+		parts = append(parts, fmt.Sprintf("%s %s %s", ins.Op, ins.Arg1.Name, ins.Arg2.Name))
 	case OpRead, OpWrite, OpParam:
-		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Arg1))
+		if ins.Arg1Index != "" {
+			parts = append(parts, fmt.Sprintf("%s[%s] %s", ins.Op, ins.Arg1Index, ins.Arg1.Name))
+		} else {
+			parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Arg1.Name))
+		}
 
 	case OpHalt, OpRet:
 		parts = append(parts, string(ins.Op))
 	default:
 		// Handle any unrecognized ops (or extend this switch to cover other cases)
-		parts = append(parts, fmt.Sprintf("Unknown instruction (Op=%q, Dest=%s, Arg1=%s, Arg2=%s)", ins.Op, ins.Destination, ins.Arg1, ins.Arg2))
+		parts = append(parts, fmt.Sprintf("Unknown instruction (Op=%q, Dest=%v, Arg1=%v, Arg2=%v)", ins.Op, ins.Destination, ins.Arg1, ins.Arg2))
 	}
 	return strings.Join(parts, " ")
 }

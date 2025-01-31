@@ -1,0 +1,1 @@
+PROCEDURE read_proc(proc_x) IS BEGIN READ proc_x; END PROGRAM IS main_x BEGIN read_proc(main_x); WRITE main_x; END
