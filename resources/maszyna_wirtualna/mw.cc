@@ -104,7 +104,7 @@ void run_machine(vector<pair<int, long long>> &program)
       exit(-1);
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(100));
     switch (current_instr)
     {
     case GET:

@@ -3,7 +3,6 @@ package parser
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/token"
@@ -45,7 +44,7 @@ func (p *Parser) peekError(t token.TokenType) error {
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
-	fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
+	//fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
 }
 
 // Parse program is the first function that is being called when you start to parse the program
@@ -518,7 +517,6 @@ func (p *Parser) parseCommandsUntil(stopTokens ...token.TokenType) *[]ast.Comman
 			// maybe break or continue
 		}
 		commands = append(commands, command)
-		time.Sleep(100 * time.Millisecond)
 	}
 	return &commands
 }
@@ -654,7 +652,19 @@ func (p *Parser) parseCondition() (*ast.Condition, error) {
 }
 
 func (p *Parser) parseValue() (ast.Value, error) {
-	// fmt.Printf("in parseValue: %v\n", p.curToken)
+	if p.curTokenIs(token.MINUS) {
+		operator := p.curToken
+		p.nextToken()
+		right, err := p.parseValue()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.UnaryExpression{
+			Token:    operator,
+			Operator: operator,
+			Right:    right,
+		}, nil
+	}
 	switch p.curToken.Type {
 	case token.NUM:
 		val := &ast.NumberLiteral{

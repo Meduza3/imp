@@ -191,6 +191,21 @@ type Value interface {
 	String() string
 }
 
+type UnaryExpression struct {
+	Token    token.Token
+	Operator token.Token
+	Right    Value
+}
+
+func (ul *UnaryExpression) valueNode()      {}
+func (ul *UnaryExpression) expressionNode() {}
+func (ul *UnaryExpression) TokenLiteral() string {
+	return ul.Token.Literal
+}
+func (ul *UnaryExpression) String() string {
+	return fmt.Sprintf("%s%s", ul.Operator.Literal, ul.Right.String())
+}
+
 type NumberLiteral struct {
 	Token token.Token //token.NUM
 	Value string      //

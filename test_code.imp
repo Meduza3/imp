@@ -1,1 +1,1 @@
-PROGRAM IS x BEGIN x := 12 % 2; WRITE x; END
+PROCEDURE proc(T t) IS x BEGIN x := t[10] + t[11]; WRITE x; END PROGRAM IS t[-10:15] BEGIN t[10] := 123; t[11] := 2; proc(t); END

@@ -20,10 +20,10 @@ BEGIN
     x:=t[i];
     j:=i;
     WHILE j>1 DO
-      k:=j-1;
+      k:= j - 1;
       IF t[k]>x THEN
         t[j]:=t[k];
-        j:=j-1;
+        j:= j - 1;
       ELSE
         k:=j;
         j:=1;
