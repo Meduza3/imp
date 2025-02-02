@@ -22,7 +22,12 @@ func main() {
 			os.Exit(1)
 		}
 		defer file.Close()
-		repl.StartFile(file.Name(), os.Stdout) // Use the file as input
+		file2, err := os.Create(os.Args[2])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating file: %v\n", err)
+			os.Exit(1)
+		}
+		repl.StartFile(file.Name(), file2) // Use the file as input
 	} else {
 		repl.Start(os.Stdin, os.Stdout) // Default to standard input
 	}

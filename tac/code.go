@@ -50,13 +50,15 @@ type Instruction struct {
 	Arg1Index   string
 	Arg2        *symboltable.Symbol
 	Arg2Index   string
-	Label       string
+	Labels      []string
 }
 
 func (ins Instruction) String() string {
 	var parts []string
-	if ins.Label != "" {
-		parts = append(parts, ins.Label+":")
+	if len(ins.Labels) != 0 {
+		for _, label := range ins.Labels {
+			parts = append(parts, fmt.Sprintf("%s: ", label))
+		}
 	}
 	switch ins.Op {
 	case OpAssign:
@@ -86,7 +88,7 @@ func (ins Instruction) String() string {
 		parts = append(parts, fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1.Name, ins.Arg2.Name, ins.JumpTo))
 
 	case OpCall:
-		parts = append(parts, fmt.Sprintf("%s %s %s", ins.Op, ins.Arg1.Name, ins.Arg2.Name))
+		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Arg1.Name))
 	case OpRead, OpWrite, OpParam:
 		if ins.Arg1Index != "" {
 			parts = append(parts, fmt.Sprintf("%s[%s] %s", ins.Op, ins.Arg1Index, ins.Arg1.Name))

@@ -146,22 +146,13 @@ func StartGeneratingFile(filepath string, out io.Writer) {
 			fmt.Printf("name=%q symbol=%v\n", keyy, valuee)
 		}
 	}
-	blocks := tac.SplitIntoBasicBlocks(g.Instructions)
-	blocks = tac.BuildFlowGraph(blocks)
 	// for _, block := range blocks {
 	// 	fmt.Printf("Block %d connections:\n", block.ID)
 	// 	fmt.Printf("  Predecessors: %v\n", tac.GetBlockIDs(block.Predecessors))
 	// 	fmt.Printf("  Successors: %v\n", tac.GetBlockIDs(block.Successors))
 	// }
 	line := 0
-	for _, block := range blocks {
-		// fmt.Println()
-		// fmt.Printf("Block %d\n", block.ID)
-		for _, instr := range block.Instructions {
-			fmt.Printf("%03d: %s\n", line, instr.String())
-			line++
-		}
-	}
+
 	translator := translator.New(*g.SymbolTable)
 	for _, table := range translator.St.Table {
 		for key, value := range table {
@@ -190,7 +181,7 @@ func StartFile(filepath string, out io.Writer) {
 
 	// Read the entire file content
 	content, err := io.ReadAll(file)
-	fmt.Println("# reading file")
+	// fmt.Println("# reading file")
 	if err != nil {
 		fmt.Fprintf(out, "Error reading file %s: %v\n", filepath, err)
 		return
@@ -198,18 +189,16 @@ func StartFile(filepath string, out io.Writer) {
 
 	l := lexer.New(string(content))
 	p := parser.New(l)
-	fmt.Print("# parsing program...		")
+	// fmt.Print("# parsing program...		")
 	program := p.ParseProgram()
-	fmt.Println("# parsed. ")
+	// fmt.Println("# parsed. ")
 	for _, err := range p.Errors() {
 		fmt.Printf("# parse Error: %s\n", err)
 	}
 	g := tac.NewGenerator()
-	fmt.Printf("# generating TAC...		")
+	// fmt.Printf("# generating TAC...		")
 	g.Generate(program)
-	fmt.Println("# generated. ")
-	blocks := tac.SplitIntoBasicBlocks(g.Instructions)
-	blocks = tac.BuildFlowGraph(blocks)
+	// fmt.Println("# generated. ")
 	// for _, block := range blocks {
 	// 	fmt.Printf("Block %d connections:\n", block.ID)
 	// 	fmt.Printf("  Predecessors: %v\n", tac.GetBlockIDs(block.Predecessors))
@@ -228,13 +217,15 @@ func StartFile(filepath string, out io.Writer) {
 		fmt.Printf("# Generator Error: %s\n", err)
 	}
 	translator := translator.New(*g.SymbolTable)
-	fmt.Println("# Translating TAC...		")
+	// fmt.Println("# Translating TAC...		")
 	translator.Translate(g.Instructions)
-	for _, instr := range translator.Output {
-		fmt.Printf("%s\n", instr.String())
-	}
 	for _, err := range translator.Errors() {
 		fmt.Printf("# ERROR: %s\n", err)
 	}
-	translator.St.Display(out, "# ")
+	if len(translator.Errors()) == 0 {
+		for _, instr := range translator.Output {
+			fmt.Fprintf(out, "%s\n", instr.String())
+		}
+	}
+	//translator.St.Display(out, "# ")
 }

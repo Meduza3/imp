@@ -15,6 +15,9 @@ type Lexer struct {
 func (l *Lexer) NextToken() token.Token {
 	l.skipWhitespace()
 	var tok token.Token
+	// defer func() {
+	// 	fmt.Println(tok)
+	// }()
 	switch l.ch {
 	case '+':
 		tok = l.newToken(token.PLUS, l.ch)
@@ -115,6 +118,119 @@ func (l *Lexer) newToken(tokenType token.TokenType, ch byte) token.Token {
 }
 
 func New(input string) *Lexer {
+	input = `
+	PROCEDURE built_in_mult() IS
+  temp, left_sign
+BEGIN
+
+    IF built_in_left <= 0 THEN
+      built_in_right:=0-built_in_right;
+      built_in_left:=0-built_in_left;
+    ENDIF
+
+    built_in_result:=0;
+
+    REPEAT
+    temp:=built_in_left/2;
+    temp:=temp+temp;
+    IF temp != built_in_left THEN
+    built_in_result:=built_in_result+built_in_right;
+    ENDIF
+    built_in_right:=built_in_right+built_in_right;
+    built_in_left:=built_in_left/2;
+    UNTIL built_in_left = 0;
+
+END
+
+PROCEDURE built_in_div() IS
+    multiple, result_sign, temp
+BEGIN
+		IF built_in_right = 0 THEN
+			built_in_result := 0;
+		ELSE
+    IF built_in_left <= 0 THEN
+    built_in_left:= 0 - built_in_left;
+    result_sign := 1;
+    ELSE
+    result_sign := 0;
+    ENDIF
+
+    built_in_result := 0;
+    multiple := 1;
+
+    IF built_in_right <= 0 THEN
+    built_in_right:= 0 - built_in_right;
+    result_sign:= 1 - result_sign;
+    ENDIF
+
+    REPEAT
+        multiple:= multiple + multiple;
+        built_in_right:= built_in_right + built_in_right;
+    UNTIL built_in_right >= built_in_left;
+
+    REPEAT
+        IF built_in_left >= built_in_right THEN
+            built_in_left := built_in_left - built_in_right;
+            built_in_result := built_in_result + multiple;
+        ENDIF
+        built_in_right := built_in_right / 2;
+        multiple := multiple / 2;
+    UNTIL multiple = 0;
+
+    IF result_sign != 0 THEN
+        IF built_in_left != 0 THEN
+            built_in_result:=-1-built_in_result;
+        ELSE
+            built_in_result:=0-built_in_result;
+        ENDIF
+    ENDIF
+		ENDIF
+END
+PROCEDURE built_in_mod() IS
+    current_divisor, dividend_sign, divisor_sign
+BEGIN
+
+    IF built_in_left <= 0 THEN
+        built_in_left:=0-built_in_left;
+        dividend_sign:=1;
+    ELSE
+        dividend_sign:=0;
+    ENDIF
+
+    IF built_in_right <= 0 THEN
+        built_in_right:=0-built_in_right;
+        divisor_sign:=1;
+    ELSE
+        divisor_sign:=0;
+    ENDIF
+
+    current_divisor:=built_in_right;
+
+    REPEAT
+        current_divisor:=current_divisor+current_divisor;
+    UNTIL current_divisor > built_in_left;
+
+    REPEAT
+        current_divisor := current_divisor / 2;
+        IF built_in_left >= current_divisor THEN
+            built_in_left := built_in_left - current_divisor;
+        ENDIF
+    UNTIL built_in_left < built_in_right;
+
+    built_in_result:=built_in_left;
+
+    IF built_in_result != 0 THEN
+
+    IF dividend_sign != 0 THEN
+        built_in_result:=built_in_right-built_in_result;
+    ENDIF
+
+    IF divisor_sign != 0 THEN
+        built_in_result:=built_in_result-built_in_right;
+    ENDIF
+
+    ENDIF
+END ` + input
 	l := &Lexer{input: input, currentLine: 1}
 	l.readChar()
 	return l

@@ -1,135 +1,12 @@
-# reading file
-# parsing program...		# parsed. 
-# generating TAC...		# WRI1TE WRITE x
-# generated. 
-# Translating TAC...		
-# ins:  goto main
-# ins:  built_in_mult:  if<= built_in_left, 0 goto L1
-# ins:  goto L2
-# ins:  L1:  t1 = 0 - built_in_right
-# ins:  built_in_right =  t1
-# ins:  t2 = 0 - built_in_left
-# ins:  built_in_left =  t2
-# ins:  L2:  built_in_result =  0
-# ins:  L3:  t3 = built_in_left / 2
-# ins:  temp =  t3
-# ins:  t4 = temp + temp
-# ins:  temp =  t4
-# ins:  if!= temp, built_in_left goto L5
-# ins:  goto L6
-# ins:  L5:  t5 = built_in_result + built_in_right
-# ins:  built_in_result =  t5
-# ins:  L6:  t6 = built_in_right + built_in_right
-# ins:  built_in_right =  t6
-# ins:  t7 = built_in_left / 2
-# ins:  built_in_left =  t7
-# ins:  if== built_in_left, 0 goto L4
-# ins:  goto L3
-# ins:  L4:  ret
-# ins:  built_in_div:  if== built_in_right, 0 goto L7
-# ins:  goto L9
-# ins:  L7:  built_in_result =  0
-# ins:  goto L8
-# ins:  L9:  if<= built_in_left, 0 goto L10
-# ins:  goto L12
-# ins:  L10:  t8 = 0 - built_in_left
-# ins:  built_in_left =  t8
-# ins:  result_sign =  1
-# ins:  goto L11
-# ins:  L12:  result_sign =  0
-# ins:  L11:  built_in_result =  0
-# ins:  multiple =  1
-# ins:  if<= built_in_right, 0 goto L13
-# ins:  goto L14
-# ins:  L13:  t9 = 0 - built_in_right
-# ins:  built_in_right =  t9
-# ins:  t10 = 1 - result_sign
-# ins:  result_sign =  t10
-# ins:  L15:  L14:  t11 = multiple + multiple
-# ins:  multiple =  t11
-# ins:  t12 = built_in_right + built_in_right
-# ins:  built_in_right =  t12
-# ins:  if>= built_in_right, built_in_left goto L16
-# ins:  goto L15
-# ins:  L17:  L16:  if>= built_in_left, built_in_right goto L19
-# ins:  goto L20
-# ins:  L19:  t13 = built_in_left - built_in_right
-# ins:  built_in_left =  t13
-# ins:  t14 = built_in_result + multiple
-# ins:  built_in_result =  t14
-# ins:  L20:  t15 = built_in_right / 2
-# ins:  built_in_right =  t15
-# ins:  t16 = multiple / 2
-# ins:  multiple =  t16
-# ins:  if== multiple, 0 goto L18
-# ins:  goto L17
-# ins:  L18:  if!= result_sign, 0 goto L21
-# ins:  goto L22
-# ins:  L21:  if!= built_in_left, 0 goto L23
-# ins:  goto L25
-# ins:  L23:  t17 = -1 - built_in_result
-# ins:  built_in_result =  t17
-# ins:  goto L24
-# ins:  L25:  t18 = 0 - built_in_result
-# ins:  built_in_result =  t18
-# ins:  L8:  L22:  L24:  ret
-# ins:  built_in_mod:  if<= built_in_left, 0 goto L26
-# ins:  goto L28
-# ins:  L26:  t19 = 0 - built_in_left
-# ins:  built_in_left =  t19
-# ins:  dividend_sign =  1
-# ins:  goto L27
-# ins:  L28:  dividend_sign =  0
-# ins:  L27:  if<= built_in_right, 0 goto L29
-# ins:  goto L31
-# ins:  L29:  t20 = 0 - built_in_right
-# ins:  built_in_right =  t20
-# ins:  divisor_sign =  1
-# ins:  goto L30
-# ins:  L31:  divisor_sign =  0
-# ins:  L30:  current_divisor =  built_in_right
-# ins:  L32:  t21 = current_divisor + current_divisor
-# ins:  current_divisor =  t21
-# ins:  if> current_divisor, built_in_left goto L33
-# ins:  goto L32
-# ins:  L34:  L33:  t22 = current_divisor / 2
-# ins:  current_divisor =  t22
-# ins:  if>= built_in_left, current_divisor goto L36
-# ins:  goto L37
-# ins:  L36:  t23 = built_in_left - current_divisor
-# ins:  built_in_left =  t23
-# ins:  L37:  if< built_in_left, built_in_right goto L35
-# ins:  goto L34
-# ins:  L35:  built_in_result =  built_in_left
-# ins:  if!= built_in_result, 0 goto L38
-# ins:  goto L39
-# ins:  L38:  if!= dividend_sign, 0 goto L40
-# ins:  goto L41
-# ins:  L40:  t24 = built_in_right - built_in_result
-# ins:  built_in_result =  t24
-# ins:  L41:  if!= divisor_sign, 0 goto L42
-# ins:  goto L43
-# ins:  L42:  t25 = built_in_result - built_in_right
-# ins:  built_in_result =  t25
-# ins:  L39:  L43:  ret
-# ins:  main:  built_in_left =  10
-# ins:  built_in_right =  0
-# ins:  call built_in_div
-# ins:  t26 =  built_in_result
-# ins:  x =  t26
-# ins:  write x
-# ins:  halt
+SET -1 # declaring constant -1
+STORE 131
 SET 1 # declaring constant 1
 STORE 100
 SET 2 # declaring constant 2
 STORE 111
-SET -1 # declaring constant -1
-STORE 131
 SET 0 # declaring constant 0
 STORE 108
-SET 10 # declaring constant 10
-STORE 147
-JUMP 248 # goto main
+JUMP 333 # goto main
 LOAD 101
 SUB 108
 JNEG 3 # to L1
@@ -377,70 +254,112 @@ STORE 145
 LOAD 145 # load {t25 TEMP 145 false 0 0 0 [] 0 0} into ACC
 STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
 RTRN 135 # ret
-LOAD 147 # load {10 CONSTANT 147 false 0 0 0 [] 0 0} into ACC
+LOAD 100 # load {1 CONSTANT 100 false 0 0 0 [] 0 0} into ACC
+STOREI 151 # store ACC into {d ARGUMENT 151 false 0 0 0 [] 4 0}
+LOADI 149 # load {b ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
+STORE 153 # store ACC into {wyk DECLARATION 153 false 0 0 0 [] 0 0}
+LOADI 148 # load {a ARGUMENT 148 false 0 0 0 [] 1 0} into ACC
 STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
+LOADI 150 # load {c ARGUMENT 150 false 0 0 0 [] 3 0} into ACC
 STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 265
-STORE 118
-JUMP -201
+SET 267
+STORE 135
+JUMP -98
 LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 148 # store ACC into {t26 TEMP 148 false 0 0 0 [] 0 0}
-LOAD 148 # load {t26 TEMP 148 false 0 0 0 [] 0 0} into ACC
-STORE 146 # store ACC into {x DECLARATION 146 false 0 0 0 [] 0 0}
-PUT 146
+STORE 155 # store ACC into {t26 TEMP 155 false 0 0 0 [] 0 0}
+LOAD 155 # load {t26 TEMP 155 false 0 0 0 [] 0 0} into ACC
+STORE 152 # store ACC into {pot DECLARATION 152 false 0 0 0 [] 0 0}
+LOAD 153
+SUB 108
+JPOS 2 # to L45
+JUMP 66 # goto L46
+LOAD 153 # load {wyk DECLARATION 153 false 0 0 0 [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOAD 111 # load {2 CONSTANT 111 false 0 0 0 [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 282
+STORE 135
+JUMP -113
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 156 # store ACC into {t27 TEMP 156 false 0 0 0 [] 0 0}
+LOAD 156 # load {t27 TEMP 156 false 0 0 0 [] 0 0} into ACC
+STORE 154 # store ACC into {o DECLARATION 154 false 0 0 0 [] 0 0}
+LOAD 154
+SUB 100
+JZERO 2 # to L47
+JUMP 23 # goto L48
+LOADI 151 # load {d ARGUMENT 151 false 0 0 0 [] 4 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOAD 152 # load {pot DECLARATION 152 false 0 0 0 [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 297
+STORE 105
+JUMP -287
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 157 # store ACC into {t28 TEMP 157 false 0 0 0 [] 0 0}
+LOAD 157 # load {t28 TEMP 157 false 0 0 0 [] 0 0} into ACC
+STOREI 151 # store ACC into {d ARGUMENT 151 false 0 0 0 [] 4 0}
+LOADI 151 # load {d ARGUMENT 151 false 0 0 0 [] 4 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOADI 150 # load {c ARGUMENT 150 false 0 0 0 [] 3 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 308
+STORE 135
+JUMP -139
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 158 # store ACC into {t29 TEMP 158 false 0 0 0 [] 0 0}
+LOAD 158 # load {t29 TEMP 158 false 0 0 0 [] 0 0} into ACC
+STOREI 151 # store ACC into {d ARGUMENT 151 false 0 0 0 [] 4 0}
+LOAD 153
+HALF
+STORE 159
+LOAD 159 # load {t30 TEMP 159 false 0 0 0 [] 0 0} into ACC
+STORE 153 # store ACC into {wyk DECLARATION 153 false 0 0 0 [] 0 0}
+LOAD 152 # load {pot DECLARATION 152 false 0 0 0 [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOAD 152 # load {pot DECLARATION 152 false 0 0 0 [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 324
+STORE 105
+JUMP -314
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 160 # store ACC into {t31 TEMP 160 false 0 0 0 [] 0 0}
+LOAD 160 # load {t31 TEMP 160 false 0 0 0 [] 0 0} into ACC
+STORE 152 # store ACC into {pot DECLARATION 152 false 0 0 0 [] 0 0}
+LOAD 152 # load {pot DECLARATION 152 false 0 0 0 [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOADI 150 # load {c ARGUMENT 150 false 0 0 0 [] 3 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 335
+STORE 135
+JUMP -166
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 161 # store ACC into {t32 TEMP 161 false 0 0 0 [] 0 0}
+LOAD 161 # load {t32 TEMP 161 false 0 0 0 [] 0 0} into ACC
+STORE 152 # store ACC into {pot DECLARATION 152 false 0 0 0 [] 0 0}
+JUMP -68 # goto L44
+RTRN 147 # ret
+GET 162
+GET 163
+GET 164
+SET 162
+STORE 186
+SET 163
+STORE 187
+SET 164
+STORE 188
+SET 165
+STORE 189
+LOAD 186
+STORE 148
+LOAD 187
+STORE 149
+LOAD 188
+STORE 150
+LOAD 189
+STORE 151
+SET 363
+STORE 147
+JUMP -106
+PUT 165
 HALT # halt
-# ==built_in_mult==
-# temp = &{temp DECLARATION 106 false 0 0 0 [] 0 0}
-# t2 = &{t2 TEMP 110 false 0 0 0 [] 0 0}
-# t3 = &{t3 TEMP 112 false 0 0 0 [] 0 0}
-# t5 = &{t5 TEMP 114 false 0 0 0 [] 0 0}
-# t6 = &{t6 TEMP 115 false 0 0 0 [] 0 0}
-# t7 = &{t7 TEMP 116 false 0 0 0 [] 0 0}
-# left_sign = &{left_sign DECLARATION 107 false 0 0 0 [] 0 0}
-# t1 = &{t1 TEMP 109 false 0 0 0 [] 0 0}
-# t4 = &{t4 TEMP 113 false 0 0 0 [] 0 0}
-# ==built_in_div==
-# t18 = &{t18 TEMP 133 false 0 0 0 [] 0 0}
-# result_sign = &{result_sign DECLARATION 120 false 0 0 0 [] 0 0}
-# t9 = &{t9 TEMP 123 false 0 0 0 [] 0 0}
-# t10 = &{t10 TEMP 124 false 0 0 0 [] 0 0}
-# t13 = &{t13 TEMP 127 false 0 0 0 [] 0 0}
-# t14 = &{t14 TEMP 128 false 0 0 0 [] 0 0}
-# t17 = &{t17 TEMP 132 false 0 0 0 [] 0 0}
-# multiple = &{multiple DECLARATION 119 false 0 0 0 [] 0 0}
-# t11 = &{t11 TEMP 125 false 0 0 0 [] 0 0}
-# t12 = &{t12 TEMP 126 false 0 0 0 [] 0 0}
-# t16 = &{t16 TEMP 130 false 0 0 0 [] 0 0}
-# t8 = &{t8 TEMP 122 false 0 0 0 [] 0 0}
-# t15 = &{t15 TEMP 129 false 0 0 0 [] 0 0}
-# temp = &{temp DECLARATION 121 false 0 0 0 [] 0 0}
-# ==built_in_mod==
-# t19 = &{t19 TEMP 139 false 0 0 0 [] 0 0}
-# t20 = &{t20 TEMP 140 false 0 0 0 [] 0 0}
-# t21 = &{t21 TEMP 141 false 0 0 0 [] 0 0}
-# t22 = &{t22 TEMP 142 false 0 0 0 [] 0 0}
-# t23 = &{t23 TEMP 143 false 0 0 0 [] 0 0}
-# current_divisor = &{current_divisor DECLARATION 136 false 0 0 0 [] 0 0}
-# dividend_sign = &{dividend_sign DECLARATION 137 false 0 0 0 [] 0 0}
-# divisor_sign = &{divisor_sign DECLARATION 138 false 0 0 0 [] 0 0}
-# t24 = &{t24 TEMP 144 false 0 0 0 [] 0 0}
-# t25 = &{t25 TEMP 145 false 0 0 0 [] 0 0}
-# ==main==
-# t26 = &{t26 TEMP 148 false 0 0 0 [] 0 0}
-# built_in_right = &{built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-# 0 = &{0 CONSTANT 108 false 0 0 0 [] 0 0}
-# 10 = &{10 CONSTANT 147 false 0 0 0 [] 0 0}
-# 2 = &{2 CONSTANT 111 false 0 0 0 [] 0 0}
-# -1 = &{-1 CONSTANT 131 false 0 0 0 [] 0 0}
-# x = &{x DECLARATION 146 false 0 0 0 [] 0 0}
-# 1 = &{1 CONSTANT 100 false 0 0 0 [] 0 0}
-# built_in_left = &{built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-# built_in_result = &{built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
-# ==xxFunctionsxx==
-# built_in_mult = &{built_in_mult PROCEDURE 104 false 0 0 0 [] 0 0}
-# built_in_mult_return = &{built_in_mult_return RETURNADDR 105 false 0 0 0 [] 0 0}
-# built_in_div = &{built_in_div PROCEDURE 117 false 0 0 0 [] 0 0}
-# built_in_div_return = &{built_in_div_return RETURNADDR 118 false 0 0 0 [] 0 0}
-# built_in_mod = &{built_in_mod PROCEDURE 134 false 0 0 0 [] 0 0}
-# built_in_mod_return = &{built_in_mod_return RETURNADDR 135 false 0 0 0 [] 0 0}

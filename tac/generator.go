@@ -66,10 +66,12 @@ func opFromToken(tk ast.MathExpression) Op {
 }
 
 func (g *Generator) Generate(node ast.Node) error {
-	fmt.Printf("# Generating node of type %T\n", node)
 	switch node := node.(type) {
 	case *ast.Program:
 		g.SymbolTable.Declare("1", "main", symboltable.Symbol{Name: "1", Kind: symboltable.CONSTANT})
+		g.SymbolTable.Declare("built_in_left", "main", symboltable.Symbol{Name: "built_in_left", Kind: symboltable.DECLARATION})
+		g.SymbolTable.Declare("built_in_right", "main", symboltable.Symbol{Name: "built_in_right", Kind: symboltable.DECLARATION})
+		g.SymbolTable.Declare("built_in_result", "main", symboltable.Symbol{Name: "built_in_result", Kind: symboltable.DECLARATION})
 		g.emit(Instruction{Op: OpGoto, JumpTo: "main"})
 		for _, procedure := range node.Procedures {
 			if procedure != nil {
@@ -93,13 +95,16 @@ func (g *Generator) Generate(node ast.Node) error {
 
 		oldProc := g.currentProc
 		g.currentProc = node.ProcHead.Name.Value // e.g. "de"
-		g.SymbolTable.Declare(g.currentProc, "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc, Kind: symboltable.PROCEDURE, ArgCount: len(node.ProcHead.ArgsDecl)})
+		funcSym, _ := g.SymbolTable.Declare(g.currentProc, "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc, Kind: symboltable.PROCEDURE, ArgCount: len(node.ProcHead.ArgsDecl)})
 		g.SymbolTable.Declare(g.currentProc+"_return", "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc + "_return", Kind: symboltable.RETURNADDR})
-		g.emit(Instruction{Label: node.ProcHead.Name.Value})
+		g.emit(Instruction{Labels: []string{node.ProcHead.Name.Value}})
 		for _, decl := range node.ProcHead.ArgsDecl {
-			err := g.DeclareArgProcedure(decl, g.currentProc)
+			sym, err := g.DeclareArgProcedure(decl, g.currentProc)
 			if err != nil {
+				fmt.Println(funcSym.ArgCount, funcSym.Arguments)
 				g.Errors = append(g.Errors, err.Error())
+			} else {
+				funcSym.Arguments = append(funcSym.Arguments, sym)
 			}
 		}
 		for _, decl := range node.Declarations {
@@ -120,7 +125,7 @@ func (g *Generator) Generate(node ast.Node) error {
 	case *ast.Main:
 		oldProc := g.currentProc
 		g.currentProc = "main"
-		g.emit(Instruction{Label: "main"})
+		g.emit(Instruction{Labels: []string{"main"}})
 		for _, decl := range node.Declarations {
 			err := g.DeclareMain(decl)
 			if err != nil {
@@ -171,7 +176,6 @@ func (g *Generator) Generate(node ast.Node) error {
 		}
 
 	case *ast.WriteCommand:
-		fmt.Printf("# WRI1TE %v\n", node)
 		val := node.Value
 
 		var sym *symboltable.Symbol
@@ -189,6 +193,11 @@ func (g *Generator) Generate(node ast.Node) error {
 			sym, err = g.SymbolTable.Lookup(value.Value, g.currentProc)
 			if err != nil {
 				return fmt.Errorf("failed to generate Write for %v: %v", node, err)
+			}
+			if isNumber(value.Index) {
+				_, err = g.SymbolTable.Declare(value.Index, "main", symboltable.Symbol{Name: value.Index, Kind: symboltable.CONSTANT})
+				if err != nil {
+				}
 			}
 			g.emit(Instruction{Op: OpWrite, Arg1: sym, Arg1Index: value.Index})
 		}
@@ -212,13 +221,13 @@ func (g *Generator) Generate(node ast.Node) error {
 		labelEnd := g.newLabel()   // e.g. "L3"
 
 		// 2. Emit labelStart at the top of the loop
-		g.emit(Instruction{Label: labelStart})
+		g.emit(Instruction{Labels: []string{labelStart}})
 
 		err := g.generateCondition(node.Condition, labelBody, labelEnd)
 		if err != nil {
 			return err
 		}
-		g.emit(Instruction{Label: labelBody})
+		g.emit(Instruction{Labels: []string{labelBody}})
 
 		for _, cmd := range node.Commands {
 			if err := g.Generate(cmd); err != nil {
@@ -230,7 +239,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			Op:     OpGoto,
 			JumpTo: labelStart,
 		})
-		g.emit(Instruction{Label: labelEnd})
+		g.emit(Instruction{Labels: []string{labelEnd}})
 
 	case *ast.ForCommand:
 		iteratorName := node.Iterator.Value
@@ -276,7 +285,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			Op:     OpGoto,
 			JumpTo: labelTest,
 		})
-		g.emit(Instruction{Label: labelTest})
+		g.emit(Instruction{Labels: []string{labelTest}})
 		if !node.IsDownTo {
 			// ascending
 			g.emit(Instruction{
@@ -298,7 +307,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			Op:     OpGoto,
 			JumpTo: labelEnd,
 		})
-		g.emit(Instruction{Label: labelBody})
+		g.emit(Instruction{Labels: []string{labelBody}})
 		for _, cmd := range node.Commands {
 			if err := g.Generate(cmd); err != nil {
 				g.Errors = append(g.Errors, err.Error())
@@ -340,44 +349,34 @@ func (g *Generator) Generate(node ast.Node) error {
 			Op:     OpGoto,
 			JumpTo: labelTest,
 		})
-		g.emit(Instruction{Label: labelEnd})
+		g.emit(Instruction{Labels: []string{labelEnd}})
 	case *ast.ProcCallCommand:
-		funcSym, _ := g.SymbolTable.Lookup(node.Name.String(), "xxFunctionsxx")
+		funcSym, err := g.SymbolTable.Lookup(node.Name.String(), "xxFunctionsxx")
+		if err != nil {
+			return fmt.Errorf("failed looking up function symbol: %v", err)
+		}
 		for _, arg := range node.Args {
 			argName := arg.String()
 			symbol, err := g.SymbolTable.Lookup(argName, g.currentProc)
 			if err == nil {
 				g.emit(Instruction{
 					Op:   OpParam,
-					Arg1: funcSym,
-					Arg2: symbol,
+					Arg1: symbol,
 				})
 			} else {
-				fmt.Printf("failed calling %s: %v\n", argName, err)
 				return fmt.Errorf("failed calling %s: %v", argName, err)
 			}
 		}
 
-		procName := node.Name.String()
-		numArgs := len(node.Args)
-		symbol, err := g.SymbolTable.Declare(fmt.Sprintf("%d", numArgs), "main", symboltable.Symbol{Name: fmt.Sprintf("%d", numArgs), Kind: symboltable.CONSTANT})
-		if err == nil {
-			g.emit(Instruction{
-				Op:   OpCall,
-				Arg1: funcSym, // the procedure label/name
-				Arg2: symbol,
-			})
-		} else {
-			fmt.Printf("failed calling %s: %v\n", procName, err)
-
-			return fmt.Errorf("failed calling %s: %v", procName, err)
-
-		}
+		g.emit(Instruction{
+			Op:   OpCall,
+			Arg1: funcSym,
+		})
 
 	case *ast.RepeatCommand:
 		labelStart := g.newLabel()
 		labelEnd := g.newLabel()
-		g.emit(Instruction{Label: labelStart})
+		g.emit(Instruction{Labels: []string{labelStart}})
 		for _, cmd := range node.Commands {
 			if err := g.Generate(cmd); err != nil {
 				g.Errors = append(g.Errors, err.Error())
@@ -392,7 +391,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		}
 
 		// 5. Emit labelEnd (the exit point)
-		g.emit(Instruction{Label: labelEnd})
+		g.emit(Instruction{Labels: []string{labelEnd}})
 
 	case *ast.IfCommand:
 		labelThen := g.newLabel() // e.g. "L1"
@@ -413,7 +412,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			return err
 		}
 
-		g.emit(Instruction{Label: labelThen})
+		g.emit(Instruction{Labels: []string{labelThen}})
 		for _, cmd := range node.ThenCommands {
 			if err := g.Generate(cmd); err != nil {
 				g.Errors = append(g.Errors, err.Error())
@@ -426,7 +425,7 @@ func (g *Generator) Generate(node ast.Node) error {
 				JumpTo: labelEnd,
 			})
 			g.emit(Instruction{
-				Label: labelElse,
+				Labels: []string{labelElse},
 			})
 			for _, cmd := range node.ElseCommands {
 				if err := g.Generate(cmd); err != nil {
@@ -435,7 +434,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			}
 		}
 
-		g.emit(Instruction{Label: labelEnd})
+		g.emit(Instruction{Labels: []string{labelEnd}})
 
 	default:
 		return nil
@@ -443,68 +442,11 @@ func (g *Generator) Generate(node ast.Node) error {
 	return nil
 }
 
-// This helper qualifies either a plain identifier "a" => "currentProc.a",
-// or an array "arr[i]" => "currentProc.arr[i]" if your language uses that approach.
-func (g *Generator) qualifyVar(plainName string) string {
-	// If plainName is something like "x", we do "proc.x"
-	// If it already has a dot, or is a temp or number, skip.
-	// But since your code calls this only for actual variables, we can do:
-	if plainName == "" {
-		return "" // safety
-	}
-	if strings.Contains(plainName, "[") {
-		idx := extractIndex(plainName)
-		_, err := strconv.Atoi(idx)
-		if err == nil {
-			g.SymbolTable.Declare(idx, "main", symboltable.Symbol{Kind: symboltable.CONSTANT, Name: idx})
-		}
-	}
-	// If it’s already got ".", or is "t1", just return it as-is
-	if hasDot(plainName) || isTemp(plainName) || isNumber(plainName) {
-		return plainName
-	}
-	// Otherwise prepend currentProc + "."
-	return g.currentProc + "." + plainName
-}
-
-func extractIndex(input string) string {
-	start := strings.Index(input, "[")
-	end := strings.LastIndex(input, "]")
-
-	if start == -1 || end == -1 || start+1 >= end {
-		return "" // Return empty if brackets are missing or invalid
-	}
-
-	return input[start+1 : end] // Extract content between [ and ]
-}
-
-// If it’s a number, we keep it as-is. Otherwise qualify it.
-func (g *Generator) qualifyVarOrNumber(s string) string {
-	if isNumber(s) || isTemp(s) {
-		return s
-	}
-	return g.qualifyVar(s)
-}
-
 func isNumber(str string) bool {
 	_, err := strconv.Atoi(str)
 	return (err == nil)
 }
 
-func isTemp(str string) bool {
-	return len(str) > 0 && str[0] == 't'
-}
-
-func hasDot(str string) bool {
-	return len(str) > 0 && func() bool {
-		for i := range str {
-			if str[i] == '.' {
-				return true
-			}
-		}
-		return false
-	}()
-}
 func MergeLabelOnlyInstructions(inss []Instruction) []Instruction {
 	// for _, ins := range inss {
 	// 	fmt.Println(ins)
@@ -516,17 +458,19 @@ func MergeLabelOnlyInstructions(inss []Instruction) []Instruction {
 
 		// Check if it's really just a "label" line,
 		// i.e. it has a label and absolutely no other data.
-		isLabelOnly := (ins.Label != "" && ins.Op == "")
+		isLabelOnly := (len(ins.Labels) > 0 && ins.Op == "")
 		if isLabelOnly {
 			// Merge this label with the *next* instruction if one exists
 			if i+1 < len(inss) {
 				next := inss[i+1]
-				if next.Label == "" {
-					next.Label = ins.Label
+				if len(next.Labels) == 0 {
+					next.Labels = ins.Labels
 				} else {
 					// If the next instruction also has a label, you could decide
 					// how to handle multiple labels. For simplicity, join them:
-					next.Label = ins.Label + " " + next.Label
+					for _, label := range ins.Labels {
+						next.Labels = append(next.Labels, label)
+					}
 				}
 				inss[i+1] = next
 			} else {
@@ -634,14 +578,19 @@ func (g *Generator) generateValue(v ast.Value) (symboltable.Symbol, error) {
 			tmp := g.newTemp()
 
 			// Generate index calculation
-			indexSym, err := g.SymbolTable.Lookup(val.Index, g.currentProc)
+			var indexSym *symboltable.Symbol
+			if isNumber(val.Index) {
+				indexSym, _ = g.SymbolTable.Declare(val.Index, "main", symboltable.Symbol{Name: val.Index, Kind: symboltable.CONSTANT})
+			} else {
+				indexSym, err = g.SymbolTable.Lookup(val.Index, g.currentProc)
+			}
 			if err != nil {
 				return symboltable.Symbol{}, err
 			}
 
 			// Emit array load instructions
 			g.emit(Instruction{
-				Op:        OpArrayLoad,
+				Op:        OpAssign,
 				Arg1:      tmp,
 				Arg2:      arrSym,
 				Arg2Index: indexSym.Name,
@@ -685,9 +634,126 @@ func (g *Generator) generateMathExpression(me *ast.MathExpression) (*symboltable
 
 	// Map the token to our Op enum
 	op := opFromToken(*me)
+	if op == OpDiv {
+		if me.Right.String() == "2" {
+			goto exit
+		} else {
+			funcSym, err := g.SymbolTable.Lookup("built_in_div", "xxFunctionsxx")
+			if err != nil {
+				return nil, err
+			}
+			leftSym, err := g.SymbolTable.Lookup("built_in_left", "main")
+			if err != nil {
+				return nil, err
+			}
+			rightSym, err := g.SymbolTable.Lookup("built_in_right", "main")
+			if err != nil {
+				return nil, err
+			}
+			resultSym, err := g.SymbolTable.Lookup("built_in_result", "main")
+			if err != nil {
+				return nil, err
+			}
+			g.emit(Instruction{
+				Op:   OpAssign,
+				Arg1: leftSym,
+				Arg2: &leftPlace,
+			})
+			g.emit(Instruction{
+				Op:   OpAssign,
+				Arg1: rightSym,
+				Arg2: &rightPlace,
+			})
+			g.emit(Instruction{
+				Op:   OpCall,
+				Arg1: funcSym,
+			})
+			g.emit(Instruction{
+				Op:   OpAssign,
+				Arg1: tmp,
+				Arg2: resultSym,
+			})
+			return tmp, nil
+		}
+	} else if op == OpMul {
+		funcSym, err := g.SymbolTable.Lookup("built_in_mult", "xxFunctionsxx")
+		if err != nil {
+			return nil, err
+		}
+		leftSym, err := g.SymbolTable.Lookup("built_in_left", "main")
+		if err != nil {
+			return nil, err
+		}
+		rightSym, err := g.SymbolTable.Lookup("built_in_right", "main")
+		if err != nil {
+			return nil, err
+		}
+		resultSym, err := g.SymbolTable.Lookup("built_in_result", "main")
+		if err != nil {
+			return nil, err
+		}
+		g.emit(Instruction{
+			Op:   OpAssign,
+			Arg1: leftSym,
+			Arg2: &leftPlace,
+		})
+		g.emit(Instruction{
+			Op:   OpAssign,
+			Arg1: rightSym,
+			Arg2: &rightPlace,
+		})
+		g.emit(Instruction{
+			Op:   OpCall,
+			Arg1: funcSym,
+		})
+		g.emit(Instruction{
+			Op:   OpAssign,
+			Arg1: tmp,
+			Arg2: resultSym,
+		})
+		return tmp, nil
+	} else if op == OpMod {
+		funcSym, err := g.SymbolTable.Lookup("built_in_mod", "xxFunctionsxx")
+		if err != nil {
+			return nil, err
+		}
+		leftSym, err := g.SymbolTable.Lookup("built_in_left", "main")
+		if err != nil {
+			return nil, err
+		}
+		rightSym, err := g.SymbolTable.Lookup("built_in_right", "main")
+		if err != nil {
+			return nil, err
+		}
+		resultSym, err := g.SymbolTable.Lookup("built_in_result", "main")
+		if err != nil {
+			return nil, err
+		}
+		g.emit(Instruction{
+			Op:   OpAssign,
+			Arg1: leftSym,
+			Arg2: &leftPlace,
+		})
+		g.emit(Instruction{
+			Op:   OpAssign,
+			Arg1: rightSym,
+			Arg2: &rightPlace,
+		})
+		g.emit(Instruction{
+			Op:   OpCall,
+			Arg1: funcSym,
+		})
+		g.emit(Instruction{
+			Op:   OpAssign,
+			Arg1: tmp,
+			Arg2: resultSym,
+		})
+		return tmp, nil
+	}
 
 	// Emit the arithmetic instruction:
 	//     tmp = leftPlace op rightPlace
+exit:
 	g.emit(Instruction{
 		Op:          op,
 		Destination: tmp,
@@ -702,7 +768,7 @@ func (g *Generator) emit(ins Instruction) {
 	g.Instructions = append(g.Instructions, ins)
 }
 
-func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error {
+func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) (*symboltable.Symbol, error) {
 	var argCount = 0
 	for _, symbol := range g.GetSymbolTable().Table[procName] {
 		if symbol.Kind == symboltable.ARGUMENT {
@@ -717,11 +783,11 @@ func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) error
 		IsTable:       isTable,
 		ArgumentIndex: argCount + 1,
 	}
-	_, err := g.SymbolTable.Declare(name, procName, symbol)
+	sym, err := g.SymbolTable.Declare(name, procName, symbol)
 	if err != nil {
-		return fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName, err)
+		return nil, fmt.Errorf("failed to declare argument %v in procedure %s: %v", decl, procName, err)
 	}
-	return nil
+	return sym, nil
 }
 
 func (g *Generator) DeclareProcedure(decl ast.Declaration, procName string) error {

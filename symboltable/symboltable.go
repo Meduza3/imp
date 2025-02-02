@@ -38,6 +38,7 @@ type Symbol struct {
 	From          int
 	To            int
 	Size          int
+	Arguments     []*Symbol
 	ArgumentIndex int
 	ArgCount      int
 }
@@ -82,17 +83,23 @@ func (st *SymbolTable) Declare(name, procedureName string, symbol Symbol) (*Symb
 
 // Lookup searches for a symbol in the main table and specific procedure table (if given).
 func (st *SymbolTable) Lookup(name, procedureName string) (*Symbol, error) {
+	// If a procedure name is provided, try to look up in that procedure's symbol table.
 	if procedureName != "" {
 		if procedureSymbols, ok := st.Table[procedureName]; ok {
 			if symbol, ok := procedureSymbols[name]; ok {
 				return symbol, nil
 			}
 		}
-		return nil, fmt.Errorf("symbol %q not found in procedure %q", name, procedureName)
 	}
 
+	// Always try the main table as a fallback.
 	if symbol, ok := st.Table["main"][name]; ok {
 		return symbol, nil
+	}
+
+	// Symbol was not found in either place.
+	if procedureName != "" {
+		return nil, fmt.Errorf("symbol %q not found in procedure %q or in main", name, procedureName)
 	}
 	return nil, fmt.Errorf("symbol %q not found in main table", name)
 }

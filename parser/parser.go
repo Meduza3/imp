@@ -45,7 +45,7 @@ func (p *Parser) peekError(t token.TokenType) error {
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
-	// fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
+	fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
 }
 
 // Parse program is the first function that is being called when you start to parse the program
@@ -212,25 +212,28 @@ func (p *Parser) parseArgs() (*[]ast.Pidentifier, error) {
 }
 
 func (p *Parser) parseWhileCommand() (*ast.WhileCommand, error) {
-	whileComm := &ast.WhileCommand{}
-	whileToken := p.curToken
-	p.nextToken()
+	whileComm := &ast.WhileCommand{Token: p.curToken}
+	p.nextToken() // Consume 'WHILE'
+
 	condition, err := p.parseCondition()
 	if err != nil {
-		// fmt.Printf("failed to parse condition: %v", err)
+		return nil, fmt.Errorf("failed to parse condition: %v", err)
 	}
-	if !p.curTokenIs(token.DO) {
-		return nil, fmt.Errorf("failed to parse while command, expected DO got %v", p.curToken.Type)
-	}
-	p.nextToken()
-	commands := p.parseCommandsUntil(token.ENDWHILE)
-	if !p.curTokenIs(token.ENDWHILE) {
-		return nil, fmt.Errorf("failed to parse while command, expected ENDWHILE got %v", p.curToken.Type)
-	}
-	p.nextToken() // Consume 'ENDWHILE'
-	whileComm.Token = whileToken
 	whileComm.Condition = *condition
-	whileComm.Commands = *commands
+
+	if !p.curTokenIs(token.DO) {
+		return nil, fmt.Errorf("expected DO after condition, got %v", p.curToken)
+	}
+	p.nextToken() // Consume 'DO'
+
+	// Parse commands until ENDWHILE
+	whileComm.Commands = *p.parseCommandsUntil(token.ENDWHILE)
+
+	if !p.curTokenIs(token.ENDWHILE) {
+		return nil, fmt.Errorf("expected ENDWHILE, got %v", p.curToken)
+	}
+	p.nextToken() // Consume ENDWHILE to advance to the next token
+
 	return whileComm, nil
 }
 
@@ -466,10 +469,12 @@ func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
 func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
 	args := []ast.ArgDecl{}
 	// fmt.Printf("in parseArgsDecl. token=%v\n", p.curToken)
+	if p.curTokenIs(token.RPAREN) {
+		return &args, nil
+	}
 	if !p.curTokenIs(token.PIDENTIFIER) && !p.curTokenIs(token.T) {
 		return nil, fmt.Errorf("failed parsing argsdecl line %d: expected pidentifier or T in args, got %s", p.curToken.Line, p.curToken.Type)
 	}
-
 	arg, err := p.parseArgDecl()
 	if err != nil {
 		return nil, fmt.Errorf("failed parsing argsdecl: %v", err)

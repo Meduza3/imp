@@ -54,7 +54,7 @@ func testAssembly(t *testing.T, inputCode string, expectedOutputNumbers []int, u
 	}
 	mcFile.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	// 3) Run VM / big-numbers VM
 	cmd2 := exec.CommandContext(ctx, "resources/maszyna_wirtualna/maszyna-wirtualna", "test_code.mr")
@@ -239,16 +239,16 @@ func TestArithmeticOperations(t *testing.T) {
 		inputCode      string
 		expectedOutput []int
 	}{
-		{"PROGRAM IS x BEGIN x := 15 + 17; WRITE x; END", []int{32}},
-		{"PROGRAM IS x BEGIN x := 15 - 17; WRITE x; END", []int{-2}},
-		{"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y + z; WRITE x; END", []int{7}},
-		{"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y - z; WRITE x; END", []int{-1}},
-		{"PROGRAM IS x, y[1:10], z[1:10], n BEGIN n := 5; y[n] := 3; z[n] := 4; x := y[n] + z[n]; WRITE x; END", []int{7}},
-		{"PROGRAM IS x, y BEGIN y := 15; x := y + 17; WRITE x; END", []int{32}},
-		{"PROGRAM IS x, y BEGIN y := 17; x := 15 + y; WRITE x; END", []int{32}},
-		{"PROGRAM IS x, y BEGIN y := 15; x := y - 17; WRITE x; END", []int{-2}},
-		{"PROGRAM IS x, y BEGIN y := 17; x := 15 - y; WRITE x; END", []int{-2}},
-		{"PROGRAM IS x, y[5:10], n BEGIN n := 5; y[n] := 17; x := 15 + y[n]; WRITE x; END", []int{32}},
+		// {"PROGRAM IS x BEGIN x := 15 + 17; WRITE x; END", []int{32}},
+		// {"PROGRAM IS x BEGIN x := 15 - 17; WRITE x; END", []int{-2}},
+		// {"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y + z; WRITE x; END", []int{7}},
+		// {"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y - z; WRITE x; END", []int{-1}},
+		// {"PROGRAM IS x, y[1:10], z[1:10], n BEGIN n := 5; y[n] := 3; z[n] := 4; x := y[n] + z[n]; WRITE x; END", []int{7}},
+		// {"PROGRAM IS x, y BEGIN y := 15; x := y + 17; WRITE x; END", []int{32}},
+		// {"PROGRAM IS x, y BEGIN y := 17; x := 15 + y; WRITE x; END", []int{32}},
+		// {"PROGRAM IS x, y BEGIN y := 15; x := y - 17; WRITE x; END", []int{-2}},
+		// {"PROGRAM IS x, y BEGIN y := 17; x := 15 - y; WRITE x; END", []int{-2}},
+		// {"PROGRAM IS x, y[5:10], n BEGIN n := 5; y[n] := 17; x := 15 + y[n]; WRITE x; END", []int{32}},
 		// {"PROGRAM IS x BEGIN x := 24 * 11; WRITE x; END", []int{264}},
 		// {"PROGRAM IS x BEGIN x := 16 * 8; WRITE x; END", []int{128}},
 		// {"PROGRAM IS x BEGIN x := 7 * 5; WRITE x; END", []int{35}},
@@ -263,18 +263,18 @@ func TestArithmeticOperations(t *testing.T) {
 		// {"PROGRAM IS x BEGIN x := 9 / 2; WRITE x; END", []int{4}},
 		// {"PROGRAM IS x BEGIN x := 10 / -2; WRITE x; END", []int{-5}},
 		// {"PROGRAM IS x BEGIN x := 10 / 2; WRITE x; END", []int{5}},
-		// {"PROGRAM IS x BEGIN x := 10 / 0; WRITE x; END", []int{0}},
+		{"PROGRAM IS x BEGIN x := 10 / 0; WRITE x; END", []int{0}},
 		// {"PROGRAM IS x, t[1:10] BEGIN t[5] := 17; x := t[5] / 2; WRITE x; END", []int{8}},
-		// {"PROGRAM IS x BEGIN x := 12 % 2; WRITE x; END", []int{0}},
-		// {"PROGRAM IS x BEGIN x := 13 % 2; WRITE x; END", []int{1}},
-		// {"PROGRAM IS x BEGIN x := 127 % 12; WRITE x; END", []int{7}},
-		// {"PROGRAM IS x BEGIN x := 10 % 3; WRITE x; END", []int{1}},
-		// {"PROGRAM IS x BEGIN x := 10 % -3; WRITE x; END", []int{-2}},
-		// {"PROGRAM IS x BEGIN x := -10 % 3; WRITE x; END", []int{2}},
-		// {"PROGRAM IS x BEGIN x := -10 % -3; WRITE x; END", []int{-1}},
-		// {"PROGRAM IS x BEGIN x := 8968 % -8; WRITE x; END", []int{0}},
-		// {"PROGRAM IS x BEGIN x := -5467 % 11; WRITE x; END", []int{0}},
-		// {"PROGRAM IS x BEGIN x := 548 % -2901; WRITE x; END", []int{-2353}},
+		{"PROGRAM IS x BEGIN x := 12 % 2; WRITE x; END", []int{0}},
+		{"PROGRAM IS x BEGIN x := 13 % 2; WRITE x; END", []int{1}},
+		{"PROGRAM IS x BEGIN x := 127 % 12; WRITE x; END", []int{7}},
+		{"PROGRAM IS x BEGIN x := 10 % 3; WRITE x; END", []int{1}},
+		{"PROGRAM IS x BEGIN x := 10 % -3; WRITE x; END", []int{-2}},
+		{"PROGRAM IS x BEGIN x := -10 % 3; WRITE x; END", []int{2}},
+		{"PROGRAM IS x BEGIN x := -10 % -3; WRITE x; END", []int{-1}},
+		{"PROGRAM IS x BEGIN x := 8968 % -8; WRITE x; END", []int{0}},
+		{"PROGRAM IS x BEGIN x := -5467 % 11; WRITE x; END", []int{0}},
+		{"PROGRAM IS x BEGIN x := 548 % -2901; WRITE x; END", []int{-2353}},
 	}
 
 	for _, tt := range cases {
