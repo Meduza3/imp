@@ -548,6 +548,14 @@ func mapConditionOp(op string) (Op, error) {
 // If it’s an array reference, it emits instructions to compute the address and load the value.
 func (g *Generator) generateValue(v ast.Value) (symboltable.Symbol, error) {
 	switch val := v.(type) {
+	case *ast.UnaryExpression:
+		numStr := val.Right.String()
+		numStr = "-" + numStr
+		sym, _ := g.SymbolTable.Declare(numStr, "main", symboltable.Symbol{
+			Name: numStr,
+			Kind: symboltable.CONSTANT,
+		})
+		return *sym, nil
 	case *ast.NumberLiteral:
 		numStr := val.String()
 		// Declare the number as a constant

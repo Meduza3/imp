@@ -44,12 +44,12 @@ func (p *Parser) peekError(t token.TokenType) error {
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
-	//fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
+	fmt.Printf("curToken = %v, peekToken = %v\n", p.curToken, p.peekToken)
 }
 
 // Parse program is the first function that is being called when you start to parse the program
 func (p *Parser) ParseProgram() *ast.Program {
-	// fmt.Printf("in ParseProgram: %v\n", p.curToken)
+	fmt.Printf("in ParseProgram: %v\n", p.curToken)
 	//Currently the main is a list of commands
 	token := token.Token{Literal: "PROGRAM_ALL", Type: token.PROGRAM_ALL}
 	procedures := p.parseProcedures()
@@ -63,7 +63,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 }
 
 func (p *Parser) parseMain() (*ast.Main, error) {
-	// fmt.Printf("in parseMain. Token = %s\n", p.curToken.Type)
+	fmt.Printf("in parseMain. Token = %s\n", p.curToken.Type)
 	main := ast.Main{}
 	if !p.curTokenIs(token.PROGRAM) {
 		return nil, fmt.Errorf("line %d: expected PROGRAM got %s", p.curToken.Line, p.curToken.Type)
@@ -85,7 +85,7 @@ func (p *Parser) parseMain() (*ast.Main, error) {
 }
 
 func (p *Parser) parsePidentifier() ast.Pidentifier {
-	// fmt.Printf("in parsePidentifier Token=%s\n", p.curToken.Type)
+	fmt.Printf("in parsePidentifier Token=%s\n", p.curToken.Type)
 	pid := ast.Pidentifier{
 		Value: p.curToken.Literal,
 		Token: p.curToken,
@@ -96,28 +96,29 @@ func (p *Parser) parsePidentifier() ast.Pidentifier {
 }
 
 func (p *Parser) parseDeclarations() *[]ast.Declaration {
-	// fmt.Printf("in parseDeclarations. Token=%s\n", p.curToken.Type)
+	fmt.Printf("in parseDeclarations. Token=%s\n", p.curToken.Type)
 	var decl = []ast.Declaration{}
 	for !p.curTokenIs(token.BEGIN) {
 		if !p.peekTokenIs(token.LBRACKET) { // not a table
 			pid := p.parsePidentifier()
 			decl = append(decl, ast.Declaration{IsTable: false, Pidentifier: pid})
 		} else {
+			pid := p.parsePidentifier() // Consumes PIDENTIFIER, curToken becomes '['
+			p.nextToken()               // Consume '[', curToken now at start of lower bound
+
 			// PIDENTIFIER = curToken
-			pid := p.parsePidentifier() // [ = curToken
-			p.nextToken()               // num = curToken
-			from := ast.NumberLiteral{
-				Token: p.curToken,
-				Value: p.curToken.Literal,
+			from, err := p.parseNumberWithOptionalMinus()
+			if err != nil {
+				p.addError(err.Error())
+				return &decl
 			}
-			p.nextToken() // : = curToken
 			p.nextToken() // num = curtoken
-			to := ast.NumberLiteral{
-				Token: p.curToken,
-				Value: p.curToken.Literal,
+			to, err := p.parseNumberWithOptionalMinus()
+			if err != nil {
+				p.addError(err.Error())
+				return &decl
 			}
 			p.nextToken() // ] = curtoken
-			p.nextToken()
 			decl = append(decl, ast.Declaration{IsTable: true, Pidentifier: pid, From: from, To: to})
 		}
 
@@ -133,11 +134,43 @@ func (p *Parser) parseDeclarations() *[]ast.Declaration {
 	return &decl
 }
 
+func (p *Parser) parseNumberWithOptionalMinus() (ast.NumberLiteral, error) {
+	var numberToken token.Token
+
+	// Handle negative numbers
+	if p.curTokenIs(token.MINUS) {
+		minusToken := p.curToken
+		p.nextToken() // Consume '-'
+
+		if !p.curTokenIs(token.NUM) {
+			return ast.NumberLiteral{}, fmt.Errorf("expected number after '-' at line %d", minusToken.Line)
+		}
+
+		// Combine minus and number into one literal
+		numberToken = token.Token{
+			Type:    token.NUM,
+			Literal: "-" + p.curToken.Literal,
+			Line:    p.curToken.Line,
+		}
+		p.nextToken() // Consume the number
+	} else if p.curTokenIs(token.NUM) {
+		numberToken = p.curToken
+		p.nextToken()
+	} else {
+		return ast.NumberLiteral{}, fmt.Errorf("expected number at line %d", p.curToken.Line)
+	}
+
+	return ast.NumberLiteral{
+		Token: numberToken,
+		Value: numberToken.Literal,
+	}, nil
+}
+
 // Uses the current token to identify which command it is
 // Should return NIL when it failed to parse the command
 func (p *Parser) ParseCommand() (ast.Command, error) {
-	// fmt.Printf("in parseCommand: %v\n", p.curToken)
-
+	fmt.Printf("in parseCommand: %v\n", p.curToken)
+	// time.Sleep(10 * time.Millisecond)
 	switch p.curToken.Type {
 	case token.PIDENTIFIER:
 		if p.peekTokenIs(token.LPAREN) {
@@ -296,7 +329,7 @@ func (p *Parser) parseForCommand() (*ast.ForCommand, error) {
 }
 
 func (p *Parser) parseReadCommand() (*ast.ReadCommand, error) {
-	// fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
+	fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
 	tok := p.curToken
 	p.nextToken() // Skip "READ". p.curToken now holds the value to read
 	value, err := p.parseIdentifier()
@@ -311,7 +344,7 @@ func (p *Parser) parseReadCommand() (*ast.ReadCommand, error) {
 }
 
 func (p *Parser) parseWriteCommand() (*ast.WriteCommand, error) {
-	// fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
+	fmt.Printf("in parseWriteCommand: %v\n", p.curToken)
 	tok := p.curToken
 	p.nextToken() // Skip "WRITE". p.curToken now holds the value to write
 	value, err := p.parseValue()
@@ -326,7 +359,7 @@ func (p *Parser) parseWriteCommand() (*ast.WriteCommand, error) {
 }
 
 func (p *Parser) parseAssignCommand() (*ast.AssignCommand, error) {
-	// fmt.Printf("in parseAssignCommand: %v\n", p.curToken)
+	fmt.Printf("in parseAssignCommand: %v\n", p.curToken)
 
 	identifier, err := p.parseIdentifier()
 	if err != nil {
@@ -363,7 +396,7 @@ func (p *Parser) parseAssignCommand() (*ast.AssignCommand, error) {
 }
 
 func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
-	// fmt.Printf("in parseIfCommand: %v\n", p.curToken)
+	fmt.Printf("in parseIfCommand: %v\n", p.curToken)
 	ifCmd := ast.IfCommand{Token: p.curToken}
 	p.nextToken()                        // Eat "IF"
 	condition, err := p.parseCondition() // Eat conditon
@@ -388,7 +421,7 @@ func (p *Parser) parseIfCommand() (*ast.IfCommand, error) {
 }
 
 func (p *Parser) parseCommands() *[]ast.Command {
-	// fmt.Printf("in parseCommands: %v\n", p.curToken)
+	fmt.Printf("in parseCommands: %v\n", p.curToken)
 	var commands = []ast.Command{}
 	for p.curToken.Type != token.EOF {
 		command, err := p.ParseCommand()
@@ -443,7 +476,7 @@ func (p *Parser) parseProcedure() (*ast.Procedure, error) {
 }
 
 func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
-	// fmt.Printf("in parseProcHead\n")
+	fmt.Printf("in parseProcHead\n")
 	procHead := ast.ProcHead{}
 	procHead.Token = p.curToken
 	name := p.parsePidentifier()
@@ -467,7 +500,7 @@ func (p *Parser) parseProcHead() (*ast.ProcHead, error) {
 
 func (p *Parser) parseArgsDecl() (*[]ast.ArgDecl, error) {
 	args := []ast.ArgDecl{}
-	// fmt.Printf("in parseArgsDecl. token=%v\n", p.curToken)
+	fmt.Printf("in parseArgsDecl. token=%v\n", p.curToken)
 	if p.curTokenIs(token.RPAREN) {
 		return &args, nil
 	}
@@ -529,7 +562,7 @@ func (p *Parser) inSet(tt token.TokenType, set []token.TokenType) bool {
 	return false
 }
 func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
-	// fmt.Printf("in parseIdentifier: %v\n", p.curToken)
+	fmt.Printf("in parseIdentifier: %v\n", p.curToken)
 	identifier := &ast.Identifier{
 		Token: p.curToken,
 		Value: p.curToken.Literal,
@@ -554,19 +587,12 @@ func (p *Parser) parseIdentifier() (*ast.Identifier, error) {
 }
 
 func (p *Parser) parseIndex() (ast.Expression, error) {
-	// fmt.Printf("in parseIndex: %v\n", p.curToken)
-
-	var index ast.Expression
-	switch p.curToken.Type {
-	case token.NUM:
-		index = &ast.NumberLiteral{Token: p.curToken, Value: p.curToken.Literal}
-	case token.PIDENTIFIER:
-		index = &ast.Pidentifier{Token: p.curToken, Value: p.curToken.Literal}
-	default:
-		return nil, fmt.Errorf("failed to parse index: not valid token: %v", p.curToken)
+	fmt.Printf("in parseIndex: %v\n", p.curToken)
+	val, err := p.parseValue()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse index: %v", err)
 	}
-	p.nextToken()
-	return index, nil
+	return val, nil
 }
 
 func (p *Parser) curTokenIs(t token.TokenType) bool {
@@ -587,7 +613,7 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 }
 
 func (p *Parser) parseMathExpression() (*ast.MathExpression, error) {
-	// fmt.Printf("in parseMathExpression: %v\n", p.curToken)
+	fmt.Printf("in parseMathExpression: %v\n", p.curToken)
 	left, err := p.parseValue()
 	if err != nil {
 		return nil, fmt.Errorf("in parseMathExpression: failed to parse left value: %v", err) // Error handling - failed to parse left-hand value
@@ -605,11 +631,12 @@ func (p *Parser) parseMathExpression() (*ast.MathExpression, error) {
 	if err != nil {
 		return nil, fmt.Errorf("in parseMathExpression: failed to parse right value: %v", err) // Error handling - failed to parse right-hand value
 	}
-	return &ast.MathExpression{
+	me := &ast.MathExpression{
 		Left:     left,
 		Operator: operator,
 		Right:    right,
-	}, nil
+	}
+	return me, nil
 }
 
 func isOperator(tt token.TokenType) bool {
@@ -629,7 +656,7 @@ func isConditionOperator(tt token.TokenType) bool {
 }
 
 func (p *Parser) parseCondition() (*ast.Condition, error) {
-	// fmt.Printf("in parseCondition: %v\n", p.curToken)
+	fmt.Printf("in parseCondition: %v\n", p.curToken)
 	left, err := p.parseValue()
 	if err != nil {
 		return nil, fmt.Errorf("in parseCondition: failed to parse left value: %v", err) // Error handling - failed to parse left-hand value

@@ -89,7 +89,7 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 	t.setupConstants()
 
 	for _, ins := range inss {
-
+		fmt.Println("# ins: ", ins.String())
 		// If this instruction has a label, you might record the final “machine code”
 		// address in a separate map, or emit a comment for readability:
 		var labels []string

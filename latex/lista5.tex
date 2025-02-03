@@ -1,0 +1,47 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[utf8]{inputenc}
+\title{Lista 4 Zadanie 5}
+\author{Marcin Zubrzycki}
+\begin{document}
+\maketitle
+\section{Treść Zadania}
+Należy wykazać, że następujące języki nie są bezkontekstowe
+\begin{itemize}
+  \item $L_1 = \{a^ib^jc^k : i < j < k\}$
+\item $L_2 = \{a^ib^j : i = j^2\}$
+\item $L_3 = \{a^i : i \text{ jest liczbą pierwszą}\}$
+\end{itemize}
+\section{Rozwiązanie}
+\subsection{Język Pierwszy}
+Język składa się ze słów postaci $\underbrace{aa\hdots a}_{i}\underbrace{bb\hdots b}_{j}\underbrace{cc\hdots c}_{k}$, gdzie $i < j < k$. \\
+Słowo $z = a^nb^{n+1}c^{n+2}$ należy do języka. Jeśli język $L_1$ jest bezkontekstowy, to $z$ może przybrać postać $z = uvwxy$, gdzie $vx \neq \epsilon$ i $|vwx| \geq n$.
+Ponieważ $vwx$ ma co najwyżej $n$ znaków, nie może zawierać jednozcześnie symboli $a$ i $c$.
+\begin{itemize}
+\item Zawiera a: $uv^3wx^3y$ zawiera co najmniej $n+2$ symboli $a$ lub $b$. Wtedy $\#a \geq \#c$, więc słowo nie należy do języka
+\item Zawiera c: $uwy$ zawiera $n$ symboli $a$ ale nie więcej niż $2n+2$ symboli b i c. Niemożliwe, żeby w skład $uwy$ wchodziło więcej b niż a i jednocześnie więcej c niż b.
+\end{itemize}
+Mamy sprzeczność niezależnie od sposobu rozkładu $z$ na $uvwxy$. $L_1$ nie jest językiem bezkontekstowym.
+\subsection{Język Drugi}
+Język składa się ze słów postaci $\underbrace{aa\hdots a}_{j^2}\underbrace{bb\hdots b}_{j}$ \\
+Słowo $z = a^{n^2}b^{n}$ należy do języka. Jeśli język $L_2$ jest bezkontekstowy, to $z$ może przybrać postać $z = uvwxy$, gdzie $vx \neq \epsilon$ i $|vwx| \geq n$. Ponownie mamy kilka przypadków rozbicia
+\begin{itemize}
+  \item $vwx$ składa się tylko z $a$: $uwy$ ma $n^2$ symboli $b$ i mniej niż $n$ symboli $a$. Nie jest częścią języka
+  \item $vwx$ składa się z zarówno $a$ i $b$: $v$ składa się jedynie z $a$. Uznajmy, że $v = a^k$ oraz $x = b^m$ składa się tylko z $b$. $uv^{i+1}wx^{i+1}y$ składa się z $n + ik$ symboli $a$ i $n^2 + im$ symboli $b$. Te wartości mają inne tempo wzrostu, więc nie jest możliwe żeby zawsze liczba $\#a = \#b^2$
+  \item $vwx$ składa się tylko z $b$: $uwy$ ma $n$ symboli $b$ i mniej niż $n^2$ symboli $a$. Nie jest częścią języka
+\end{itemize}
+Mamy sprzeczność niezależnie od sposobu rozkładu $z$ na $uvwxy$. $L_2$ nie jest językiem bezkontekstowym.
+
+\subsection{Język Trzeci}
+Język składa się ze słów postaci $\underbrace{aa\hdots a}_{p}$, gdzie $p$ jestl iczbą pierwszą. \\
+Jeśli język jest bezkontekstowy, to słowo $z \in L_3$ można rozbić na $z = uvwxy$, gdzie $vx \neq \epsilon$ i $|vwx| \geq n$.
+Jeśli $|z| = p$, to $v = a^q$ i $x = a^t$. Zgodnie z założeniami lematu o pompowaniu, $q + t > 0$ Słowo $uwy$ należy do języka i ma długość $i = p - q - t$.
+słowo $uv^iwx^iy$ ma długość $r+rq+rt=r(1+q+t)$ podzielną przez $r$ i $1+q+t>1$. Nie jest liczbą pierwszą jeśli $r>1$.\\
+Dla $r=0$: $|uw^2xy^2z|=2p$\\
+Dla $r=1$: $|uv^{p+1}wx^{p+1}z|=1+(p+1)q+(p+1)t=1+(p+1)(q+t)=1+(p+1)(p-1)=p^2$\\ \\
+W każdym przypadku mamy sprzeczność. $L_3$ nie jest językiem bezkontekstowym
+\end{document}
