@@ -31,29 +31,16 @@ func testAssembly(t *testing.T, inputCode string, expectedOutputNumbers []int, u
 		t.Fatalf("failed to execute make: %v", err)
 	}
 
-	compilerCmd := exec.Command("./bin/main", file.Name())
-	machinecode, err := compilerCmd.StdoutPipe()
+	file2, err := os.Create("test_code.mr")
 	if err != nil {
-		t.Fatalf("failed to read from command")
+		t.Fatalf("failed to create file")
 	}
+	compilerCmd := exec.Command("./bin/main", file.Name(), file2.Name())
 
 	if err := compilerCmd.Start(); err != nil {
 		t.Fatalf("failed to execute compiler: %v", err)
 	}
-	compiled, err := io.ReadAll(machinecode)
-	if err != nil {
-		t.Fatalf("failed to read compiler output: %v", err)
-	}
 	compilerCmd.Wait()
-	mcFile, err := os.Create("test_code.mr") // some “machine code” file
-	if err != nil {
-		t.Fatalf("failed to create machine code file: %v", err)
-	}
-	if _, err := mcFile.Write(compiled); err != nil {
-		t.Fatalf("failed to write machine code: %v", err)
-	}
-	mcFile.Close()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	// 3) Run VM / big-numbers VM
@@ -83,14 +70,12 @@ func testAssembly(t *testing.T, inputCode string, expectedOutputNumbers []int, u
 	nums := extractNumbers(string(output))
 	// 5) Validate against expectedOutputNumbers
 	if len(nums) != len(expectedOutputNumbers) {
-		t.Log(string(compiled))
 
 		t.Fatalf("expected %d numbers, but got %d: %v", len(expectedOutputNumbers), len(nums), nums)
 	}
 
 	for i, expected := range expectedOutputNumbers {
 		if nums[i] != expected {
-			t.Log(string(compiled))
 			t.Fatalf("expected output %d at index %d, but got %d", expected, i, nums[i])
 		}
 	}
@@ -239,32 +224,32 @@ func TestArithmeticOperations(t *testing.T) {
 		inputCode      string
 		expectedOutput []int
 	}{
-		// {"PROGRAM IS x BEGIN x := 15 + 17; WRITE x; END", []int{32}},
-		// {"PROGRAM IS x BEGIN x := 15 - 17; WRITE x; END", []int{-2}},
-		// {"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y + z; WRITE x; END", []int{7}},
-		// {"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y - z; WRITE x; END", []int{-1}},
-		// {"PROGRAM IS x, y[1:10], z[1:10], n BEGIN n := 5; y[n] := 3; z[n] := 4; x := y[n] + z[n]; WRITE x; END", []int{7}},
-		// {"PROGRAM IS x, y BEGIN y := 15; x := y + 17; WRITE x; END", []int{32}},
-		// {"PROGRAM IS x, y BEGIN y := 17; x := 15 + y; WRITE x; END", []int{32}},
-		// {"PROGRAM IS x, y BEGIN y := 15; x := y - 17; WRITE x; END", []int{-2}},
-		// {"PROGRAM IS x, y BEGIN y := 17; x := 15 - y; WRITE x; END", []int{-2}},
-		// {"PROGRAM IS x, y[5:10], n BEGIN n := 5; y[n] := 17; x := 15 + y[n]; WRITE x; END", []int{32}},
-		// {"PROGRAM IS x BEGIN x := 24 * 11; WRITE x; END", []int{264}},
-		// {"PROGRAM IS x BEGIN x := 16 * 8; WRITE x; END", []int{128}},
-		// {"PROGRAM IS x BEGIN x := 7 * 5; WRITE x; END", []int{35}},
-		// {"PROGRAM IS x BEGIN x := 5 * 7; WRITE x; END", []int{35}},
-		// {"PROGRAM IS x BEGIN x := -5 * 7; WRITE x; END", []int{-35}},
-		// {"PROGRAM IS x BEGIN x := -5 * -7; WRITE x; END", []int{35}},
-		// {"PROGRAM IS x BEGIN x := 5 * -7; WRITE x; END", []int{-35}},
-		// {"PROGRAM IS x, y, z BEGIN y := 5; z := 7; x := y * z; WRITE x; END", []int{35}},
-		// {"PROGRAM IS x BEGIN x := 12 / 2; WRITE x; END", []int{6}},
-		// {"PROGRAM IS x BEGIN x := 17 / 2; WRITE x; END", []int{8}},
-		// {"PROGRAM IS x BEGIN x := 9 / -2; WRITE x; END", []int{-5}},
-		// {"PROGRAM IS x BEGIN x := 9 / 2; WRITE x; END", []int{4}},
-		// {"PROGRAM IS x BEGIN x := 10 / -2; WRITE x; END", []int{-5}},
-		// {"PROGRAM IS x BEGIN x := 10 / 2; WRITE x; END", []int{5}},
+		{"PROGRAM IS x BEGIN x := 15 + 17; WRITE x; END", []int{32}},
+		{"PROGRAM IS x BEGIN x := 15 - 17; WRITE x; END", []int{-2}},
+		{"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y + z; WRITE x; END", []int{7}},
+		{"PROGRAM IS x, y, z BEGIN y := 3; z := 4; x := y - z; WRITE x; END", []int{-1}},
+		{"PROGRAM IS x, y[1:10], z[1:10], n BEGIN n := 5; y[n] := 3; z[n] := 4; x := y[n] + z[n]; WRITE x; END", []int{7}},
+		{"PROGRAM IS x, y BEGIN y := 15; x := y + 17; WRITE x; END", []int{32}},
+		{"PROGRAM IS x, y BEGIN y := 17; x := 15 + y; WRITE x; END", []int{32}},
+		{"PROGRAM IS x, y BEGIN y := 15; x := y - 17; WRITE x; END", []int{-2}},
+		{"PROGRAM IS x, y BEGIN y := 17; x := 15 - y; WRITE x; END", []int{-2}},
+		{"PROGRAM IS x, y[5:10], n BEGIN n := 5; y[n] := 17; x := 15 + y[n]; WRITE x; END", []int{32}},
+		{"PROGRAM IS x BEGIN x := 24 * 11; WRITE x; END", []int{264}},
+		{"PROGRAM IS x BEGIN x := 16 * 8; WRITE x; END", []int{128}},
+		{"PROGRAM IS x BEGIN x := 7 * 5; WRITE x; END", []int{35}},
+		{"PROGRAM IS x BEGIN x := 5 * 7; WRITE x; END", []int{35}},
+		{"PROGRAM IS x BEGIN x := -5 * 7; WRITE x; END", []int{-35}},
+		{"PROGRAM IS x BEGIN x := -5 * -7; WRITE x; END", []int{35}},
+		{"PROGRAM IS x BEGIN x := 5 * -7; WRITE x; END", []int{-35}},
+		{"PROGRAM IS x, y, z BEGIN y := 5; z := 7; x := y * z; WRITE x; END", []int{35}},
+		{"PROGRAM IS x BEGIN x := 12 / 2; WRITE x; END", []int{6}},
+		{"PROGRAM IS x BEGIN x := 17 / 2; WRITE x; END", []int{8}},
+		{"PROGRAM IS x BEGIN x := 9 / -2; WRITE x; END", []int{-5}},
+		{"PROGRAM IS x BEGIN x := 9 / 2; WRITE x; END", []int{4}},
+		{"PROGRAM IS x BEGIN x := 10 / -2; WRITE x; END", []int{-5}},
+		{"PROGRAM IS x BEGIN x := 10 / 2; WRITE x; END", []int{5}},
 		{"PROGRAM IS x BEGIN x := 10 / 0; WRITE x; END", []int{0}},
-		// {"PROGRAM IS x, t[1:10] BEGIN t[5] := 17; x := t[5] / 2; WRITE x; END", []int{8}},
+		{"PROGRAM IS x, t[1:10] BEGIN t[5] := 17; x := t[5] / 2; WRITE x; END", []int{8}},
 		{"PROGRAM IS x BEGIN x := 12 % 2; WRITE x; END", []int{0}},
 		{"PROGRAM IS x BEGIN x := 13 % 2; WRITE x; END", []int{1}},
 		{"PROGRAM IS x BEGIN x := 127 % 12; WRITE x; END", []int{7}},
@@ -395,6 +380,59 @@ func TestProc(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.input_code, func(t *testing.T) {
 			testAssembly(t, tt.input_code, tt.expectedOutput, tt.userInput)
+		})
+	}
+}
+
+func TestLast(t *testing.T) {
+	cases := []struct {
+		inputCode      string
+		expectedOutput []int
+		userInput      string
+	}{
+		// 		{
+		// 			`PROCEDURE shuffle(T t, n) IS
+		// 			q, w
+		// BEGIN
+		//   q := 5;
+		// 	w := 1;
+		// 	w := q*w;
+		// 	WRITE w;
+		// 	w := w%n;
+		// 	WRITE w;
+		//   t[n]:=0;
+		// END
+		// PROGRAM IS
+		//   t[1:23], n
+		// BEGIN
+		//   n:=23;
+		//   shuffle(t,n);
+		//   WRITE 1234567890;
+		// 	WRITE t[n]
+		// END`,
+		// 			[]int{5, 0, 1234567890, 0},
+		// 			"",
+		// 		},
+		{
+			`PROCEDURE write_mult() IS
+			q, w
+BEGIN
+  q := 5;
+	w := 1;
+	w := q*w;
+	WRITE w;
+END
+PROGRAM IS
+BEGIN
+  write_mult()
+END`,
+			[]int{5},
+			"",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.inputCode, func(t *testing.T) {
+			testAssembly(t, tt.inputCode, tt.expectedOutput, tt.userInput)
 		})
 	}
 }
