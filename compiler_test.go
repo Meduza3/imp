@@ -390,43 +390,88 @@ func TestLast(t *testing.T) {
 		expectedOutput []int
 		userInput      string
 	}{
-		// 		{
-		// 			`PROCEDURE shuffle(T t, n) IS
-		// 			q, w
-		// BEGIN
-		//   q := 5;
-		// 	w := 1;
-		// 	w := q*w;
-		// 	WRITE w;
-		// 	w := w%n;
-		// 	WRITE w;
-		//   t[n]:=0;
-		// END
-		// PROGRAM IS
-		//   t[1:23], n
-		// BEGIN
-		//   n:=23;
-		//   shuffle(t,n);
-		//   WRITE 1234567890;
-		// 	WRITE t[n]
-		// END`,
-		// 			[]int{5, 0, 1234567890, 0},
-		// 			"",
-		// 		},
+		{
+			`
+PROCEDURE write(T t, n) IS
+BEGIN
+WRITE n;
+END
+
+PROGRAM IS
+  t[1:23], n
+BEGIN
+  n:=23;
+  write(t,n);
+  WRITE 1234567890;
+END
+`,
+			[]int{23, 1234567890},
+			"",
+		},
+		{
+			`
+PROCEDURE write(T t, n) IS
+BEGIN
+  FOR i FROM 1 TO n DO
+  	WRITE i;
+  ENDFOR
+END
+
+PROGRAM IS
+  t[1:23], n
+BEGIN
+  n:=23;
+  write(t,n);
+  WRITE 1234567890;
+END
+`,
+			[]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 1234567890},
+			"",
+		},
 		{
 			`PROCEDURE write_mult() IS
 			q, w
 BEGIN
-  q := 5;
-	w := 1;
+  q := 4;
+	w := -3;
 	w := q*w;
 	WRITE w;
 END
 PROGRAM IS
 BEGIN
-  write_mult()
+  write_mult();
 END`,
-			[]int{5},
+			[]int{-12},
+			"",
+		},
+		{
+			`PROCEDURE write_mult() IS
+			q, w
+BEGIN
+  q := 4;
+	w := -3;
+	w := q*w;
+	WRITE w;
+	w := w / q;
+	WRITE w;
+END
+PROGRAM IS
+BEGIN
+  write_mult();
+END`,
+			[]int{-12, -3},
+			"",
+		},
+		{
+			`PROCEDURE write_big() IS
+BEGIN
+	WRITE 1234567890;
+END
+PROGRAM IS
+BEGIN
+  write_big();
+END`,
+			[]int{1234567890},
 			"",
 		},
 	}

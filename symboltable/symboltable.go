@@ -19,6 +19,25 @@ func (st *SymbolTable) Display(w io.Writer, prefix string) {
 	}
 }
 
+func (st *SymbolTable) Initialize(sym *Symbol, currentProc string) {
+	// Mark the symbol as initialized.
+	sym.IsInitialized = true
+
+	// First, try to update the symbol in the current procedure’s map.
+	if procTable, ok := st.Table[currentProc]; ok {
+		if _, exists := procTable[sym.Name]; exists {
+			procTable[sym.Name] = sym
+			return
+		}
+	}
+	// If it isn’t found in the current procedure’s table, try the main table.
+	if mainTable, ok := st.Table["main"]; ok {
+		if _, exists := mainTable[sym.Name]; exists {
+			mainTable[sym.Name] = sym
+		}
+	}
+}
+
 type SymbolKind string
 
 const (
@@ -32,6 +51,7 @@ const (
 
 type Symbol struct {
 	Name          string
+	IsInitialized bool
 	Kind          SymbolKind
 	Address       int
 	IsTable       bool

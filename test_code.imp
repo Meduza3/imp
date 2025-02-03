@@ -1,12 +1,14 @@
-PROCEDURE write_mult() IS
-			q, w
+PROCEDURE write(T t, n) IS
 BEGIN
-  q := 5;
-	w := 1;
-	w := q*w;
-	WRITE w;
+  FOR i FROM 1 TO n DO
+  	WRITE i;
+  ENDFOR
 END
+
 PROGRAM IS
+  t[1:23], n
 BEGIN
-  write_mult()
+  n:=23;
+  write(t,n);
+  WRITE 1234567890;
 END

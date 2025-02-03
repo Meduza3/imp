@@ -1,0 +1,68 @@
+PROCEDURE mult(left, right) IS
+  a, b, res
+BEGIN
+  res := 0;
+  WHILE right > 0 DO
+    half := right / 2;
+    IF half + half = right THEN
+      res := res + left;
+    ENDIF
+    a := a + a;
+    b = b / 2;
+  ENDWHILE
+END
+
+PROCEDURE divide(divident, divisor) IS
+  quotient, remainder, temp, multiple, isANeg, isBNeg
+BEGIN
+  IF divident < 0 THEN
+    isANeg := 1;
+    divident := 0 - divident;
+  ENDIF
+  IF divisor < 0 THEN
+    isBNeg := 1;
+    divisor := 0 - divisor;
+  ENDIF
+  IF divisor = 0 THEN
+    remainder = 0;
+    quotient = 0;
+  ELSE
+    WHILE remainder >= divisor DO
+      temp := divisor;
+      multiple := 1;
+      WHILE remainder >= temp + temp DO
+        temp := temp + temp;
+        multiple := multiple + multiple
+      ENDWHILE
+
+      remainder := remainder - temp;
+      quotient := quotient + multiple;
+    ENDWHILE
+
+  ENDIF
+PROGRAM IS
+BEGIN
+END
+
+PROCEDURE modulo(divident, divisor) IS
+  quotient, remainder, temp, multiple
+BEGIN
+  IF divisor = 0 THEN
+    remainder = 0;
+  ELSE
+    WHILE remainder >= divisor DO
+      temp := divisor;
+      multiple := 1;
+      WHILE remainder >= temp + temp DO
+        temp := temp + temp;
+      ENDWHILE
+      remainder := remainder - temp;
+    ENDWHILE
+    IF divident < 0 THEN
+      remainder - divisor
+    ENDIF
+  ENDIF
+END
+PROGRAM IS
+BEGIN
+END

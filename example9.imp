@@ -1,0 +1,27 @@
+# Kombinacje 2
+# ? 20
+# ? 9
+# > 167960
+
+PROCEDURE factorial(T s,n) IS
+  p
+BEGIN
+  # WRITE n;
+  FOR i FROM 1 TO n DO
+    # WRITE i;
+     # s[i]:=p*i;
+  ENDFOR
+END
+
+PROCEDURE bc(n) IS
+  s[0:100],p
+BEGIN
+  factorial(s,n);
+END
+
+PROGRAM IS
+    n, s[0:100]
+BEGIN
+    n := 3;
+   bc(n);
+END

@@ -116,6 +116,8 @@ func New(input string) *Lexer {
   temp, left_sign
 BEGIN
 
+WRITE built_in_left;
+WRITE built_in_right;
     IF built_in_left <= 0 THEN
       built_in_right:=0-built_in_right;
       built_in_left:=0-built_in_left;

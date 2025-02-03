@@ -125,11 +125,6 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("failed to handleAddSub %v: %v", ins, err))
 			}
-		case tac.OpMod:
-			err := t.handleMod(ins)
-			if err != nil {
-				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
-			}
 		case tac.OpGoto:
 			// "goto L"
 			destination := ins.JumpTo
@@ -160,7 +155,7 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
 		case tac.OpParam:
-			err := t.handleParam(*ins.Arg1, labels)
+			err := t.handleParam(ins.Arg1, labels)
 			if err != nil {
 				t.errors = append(t.errors, fmt.Sprintf("Failed to translate %v: %v", ins, err))
 			}
@@ -185,6 +180,7 @@ func (t *Translator) handleRead(ins tac.Instruction) error {
 	if ins.Arg1 == nil {
 		panic("nil arg1!!!")
 	}
+	t.St.Initialize(ins.Arg1, t.currentFunctionName)
 	if ins.Arg1.Kind == symboltable.ARGUMENT {
 		if ins.Arg1.IsTable {
 			idxSym, err := t.getSymbol(ins.Arg1Index)
@@ -294,6 +290,7 @@ func (t *Translator) handleWrite(ins tac.Instruction) error {
 	if ins.Arg1 == nil {
 		panic("WRITE instruction has nil Arg1")
 	}
+
 	if ins.Arg1.Kind == symboltable.ARGUMENT {
 		if ins.Arg1.IsTable {
 			idxSym, err := t.getSymbol(ins.Arg1Index)
@@ -341,18 +338,37 @@ func (t *Translator) handleWrite(ins tac.Instruction) error {
 		if err != nil {
 			return fmt.Errorf("failed to getSymbol for index %q: %v", ins.Arg1Index, err)
 		}
-		t.emit(code.Instruction{
-			Op:         code.SET,
-			HasOperand: true,
-			Operand:    ins.Arg1.Address,
-			Labels:     ins.Labels,
-			Comment:    ins.String(),
-		})
-		t.emit(code.Instruction{
-			Op:         code.ADD,
-			HasOperand: true,
-			Operand:    idxSym.Address,
-		})
+		if ins.Arg1.Kind == symboltable.ARGUMENT {
+			t.emit(code.Instruction{
+				Op:         code.LOAD,
+				HasOperand: true,
+				Operand:    ins.Arg1.Address,
+				Labels:     ins.Labels,
+				Comment:    ins.String(),
+			})
+		} else {
+			t.emit(code.Instruction{
+				Op:         code.SET,
+				HasOperand: true,
+				Operand:    ins.Arg1.Address,
+				Labels:     ins.Labels,
+				Comment:    ins.String(),
+			})
+		}
+		if idxSym.Kind == symboltable.ARGUMENT {
+			t.emit(code.Instruction{
+				Op:         code.ADDI,
+				HasOperand: true,
+				Operand:    idxSym.Address,
+			})
+		} else {
+			t.emit(code.Instruction{
+				Op:         code.ADD,
+				HasOperand: true,
+				Operand:    idxSym.Address,
+			})
+		}
+
 		t.emit(code.Instruction{
 			Op:         code.LOADI,
 			HasOperand: true,
@@ -376,6 +392,8 @@ func (t *Translator) handleAssign(ins tac.Instruction) error {
 	if ins.Arg1 == nil || ins.Arg2 == nil {
 		return fmt.Errorf("nil argument in assignment instruction: %v", ins)
 	}
+
+	t.St.Initialize(ins.Arg1, t.currentFunctionName)
 	dest := ins.Arg1
 	destIndex := ins.Arg1Index
 	src := ins.Arg2
@@ -608,6 +626,8 @@ func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcI
 }
 
 func (t *Translator) handleAddSub(ins tac.Instruction) error {
+
+	t.St.Initialize(ins.Destination, t.currentFunctionName)
 	dest := ins.Destination
 	Arg1Index := ins.Arg1Index
 	arg1 := ins.Arg1
@@ -935,32 +955,59 @@ func (t *Translator) handleVarToVarAddSub(op tac.Op, dest symboltable.Symbol, ar
 }
 
 func (t *Translator) ArrayMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg1Index, Arg2Index string, labels []string) error {
-	t.emit(code.Instruction{
-		Op:         code.SET,
-		HasOperand: true,
-		Operand:    arg1.Address,
-		Labels:     labels,
-	})
+	if arg1.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.LOAD,
+			HasOperand: true,
+			Operand:    arg1.Address,
+			Labels:     labels,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SET,
+			HasOperand: true,
+			Operand:    arg1.Address,
+			Labels:     labels,
+		})
+	}
+
 	idxSym, err := t.getSymbol(Arg2Index)
 	if err != nil {
 		return err
 	}
-	t.emit(code.Instruction{
-		Op:         code.ADD,
-		HasOperand: true,
-		Operand:    idxSym.Address,
-	})
+	if idxSym.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.ADDI,
+			HasOperand: true,
+			Operand:    idxSym.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    idxSym.Address,
+		})
+	}
+
 	t.emit(code.Instruction{
 		Op:         code.LOADI,
 		HasOperand: true,
 		Operand:    0,
 	})
+	if arg2.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.LOADI,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SET,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	}
 
-	t.emit(code.Instruction{
-		Op:         code.SET,
-		HasOperand: true,
-		Operand:    arg2.Address,
-	})
 	idxSym, err = t.getSymbol(Arg2Index)
 	if err != nil {
 		return err
@@ -970,85 +1017,163 @@ func (t *Translator) ArrayMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg1Inde
 		HasOperand: true,
 		Operand:    0,
 	})
-	t.emit(code.Instruction{
-		Op:         code.SUB,
-		HasOperand: true,
-		Operand:    t.pointerCell,
-	})
+	if idxSym.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.SUBI,
+			HasOperand: true,
+			Operand:    t.pointerCell,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    t.pointerCell,
+		})
+	}
 
 	return nil
 }
 
 func (t *Translator) VarMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg2Index string, labels []string) error {
-	t.emit(code.Instruction{
-		Op:         code.SET,
-		HasOperand: true,
-		Operand:    arg2.Address,
-		Labels:     labels,
-	})
+	if arg2.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.LOAD,
+			HasOperand: true,
+			Operand:    arg2.Address,
+			Labels:     labels,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SET,
+			HasOperand: true,
+			Operand:    arg2.Address,
+			Labels:     labels,
+		})
+
+	}
 	idxSym, err := t.getSymbol(Arg2Index)
 	if err != nil {
 		return err
 	}
-	t.emit(code.Instruction{
-		Op:         code.ADD,
-		HasOperand: true,
-		Operand:    idxSym.Address,
-	})
+	if idxSym.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.ADDI,
+			HasOperand: true,
+			Operand:    idxSym.Address,
+		})
+
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    idxSym.Address,
+		})
+	}
 
 	t.emit(code.Instruction{
 		Op:         code.LOADI,
 		HasOperand: true,
 		Operand:    0,
 	})
+	if arg1.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.SUBI,
+			HasOperand: true,
+			Operand:    arg1.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    arg1.Address,
+		})
+	}
 
-	t.emit(code.Instruction{
-		Op:         code.SUB,
-		HasOperand: true,
-		Operand:    arg1.Address,
-	})
 	return nil
 }
 
 func (t *Translator) ArrayMinusVarLoad(arg1, arg2 symboltable.Symbol, Arg1Index string, labels []string) error {
-	t.emit(code.Instruction{
-		Op:         code.SET,
-		HasOperand: true,
-		Operand:    arg1.Address,
-		Labels:     labels,
-	})
+	if arg1.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.LOAD,
+			HasOperand: true,
+			Operand:    arg1.Address,
+			Labels:     labels,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SET,
+			HasOperand: true,
+			Operand:    arg1.Address,
+			Labels:     labels,
+		})
+
+	}
 	idxSym, err := t.getSymbol(Arg1Index)
 	if err != nil {
 		return err
 	}
-	t.emit(code.Instruction{
-		Op:         code.ADD,
-		HasOperand: true,
-		Operand:    idxSym.Address,
-	})
+	if idxSym.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.ADDI,
+			HasOperand: true,
+			Operand:    idxSym.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.ADD,
+			HasOperand: true,
+			Operand:    idxSym.Address,
+		})
 
-	t.emit(code.Instruction{
-		Op:         code.SUB,
-		HasOperand: true,
-		Operand:    arg2.Address,
-	})
-
+	}
+	if arg2.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.SUBI,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	}
 	return nil
 }
 
 func (t *Translator) VarMinusVarLoad(arg1 symboltable.Symbol, arg2 symboltable.Symbol, labels []string) error {
-	t.emit(code.Instruction{
-		Op:         code.LOAD,
-		HasOperand: true,
-		Operand:    arg1.Address,
-		Labels:     labels,
-	})
+	if arg1.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.LOADI,
+			HasOperand: true,
+			Operand:    arg1.Address,
+			Labels:     labels,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.LOAD,
+			HasOperand: true,
+			Operand:    arg1.Address,
+			Labels:     labels,
+		})
+	}
 
-	t.emit(code.Instruction{
-		Op:         code.SUB,
-		HasOperand: true,
-		Operand:    arg2.Address,
-	})
+	// Subtract arg2 from ACC
+	if arg2.Kind == symboltable.ARGUMENT {
+		t.emit(code.Instruction{
+			Op:         code.SUBI,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	} else {
+		t.emit(code.Instruction{
+			Op:         code.SUB,
+			HasOperand: true,
+			Operand:    arg2.Address,
+		})
+	}
 
 	return nil
 }
@@ -1154,14 +1279,11 @@ func (t *Translator) handleArrayLoad(ins tac.Instruction) error {
 	return nil
 }
 
-func (t *Translator) handleMod(ins tac.Instruction) error {
-	panic("unimplemented")
-}
-
 func (t *Translator) handleDiv(ins tac.Instruction) error {
 	if ins.Arg2.Name == "2" {
 		destArgument := ins.Destination.Kind == symboltable.ARGUMENT
 		arg1Argument := ins.Arg1.Kind == symboltable.ARGUMENT
+		t.St.Initialize(ins.Destination, t.currentFunctionName)
 		if arg1Argument {
 			t.emit(code.Instruction{
 				Op:         code.LOADI,
@@ -1198,7 +1320,8 @@ func (t *Translator) handleDiv(ins tac.Instruction) error {
 	return fmt.Errorf("unimplemented :)")
 }
 
-func (t *Translator) handleParam(param symboltable.Symbol, labels []string) error {
+func (t *Translator) handleParam(param *symboltable.Symbol, labels []string) error {
+	t.St.Initialize(param, t.currentFunctionName)
 	if param.Kind == symboltable.ARGUMENT {
 		t.emit(code.Instruction{
 			Op:         code.LOAD,

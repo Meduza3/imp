@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Meduza3/imp/ast"
 	"github.com/Meduza3/imp/token"
@@ -170,7 +171,7 @@ func (p *Parser) parseNumberWithOptionalMinus() (ast.NumberLiteral, error) {
 // Should return NIL when it failed to parse the command
 func (p *Parser) ParseCommand() (ast.Command, error) {
 	fmt.Printf("in parseCommand: %v\n", p.curToken)
-	// time.Sleep(10 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	switch p.curToken.Type {
 	case token.PIDENTIFIER:
 		if p.peekTokenIs(token.LPAREN) {
@@ -195,6 +196,7 @@ func (p *Parser) ParseCommand() (ast.Command, error) {
 }
 
 func (p *Parser) parseProcCallCommand() (*ast.ProcCallCommand, error) {
+	fmt.Printf("in parseProcCallCommand. curToken=%v\n", p.curToken)
 	procCallToken := p.curToken
 	name := p.parsePidentifier()
 	if !p.curTokenIs(token.LPAREN) {
@@ -222,7 +224,10 @@ func (p *Parser) parseProcCallCommand() (*ast.ProcCallCommand, error) {
 
 func (p *Parser) parseArgs() (*[]ast.Pidentifier, error) {
 	args := []ast.Pidentifier{}
-
+	if p.curTokenIs(token.RPAREN) {
+		return &args, nil
+	}
+	fmt.Printf("in parseArgs. curToken=%v\n", p.curToken)
 	if !p.curTokenIs(token.PIDENTIFIER) {
 		return nil, fmt.Errorf("failed parsing proccall line %d: expected pidentifier in args, got %s", p.curToken.Line, p.curToken.Type)
 	}

@@ -44,6 +44,7 @@ func (g *Generator) newTemp() *symboltable.Symbol {
 		Name: name,
 		Kind: symboltable.TEMP,
 	})
+	g.SymbolTable.Initialize(sym, g.currentProc) // <-- ADD THIS LINE
 	return sym
 }
 
@@ -69,9 +70,12 @@ func (g *Generator) Generate(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Program:
 		g.SymbolTable.Declare("1", "main", symboltable.Symbol{Name: "1", Kind: symboltable.CONSTANT})
-		g.SymbolTable.Declare("built_in_left", "main", symboltable.Symbol{Name: "built_in_left", Kind: symboltable.DECLARATION})
-		g.SymbolTable.Declare("built_in_right", "main", symboltable.Symbol{Name: "built_in_right", Kind: symboltable.DECLARATION})
-		g.SymbolTable.Declare("built_in_result", "main", symboltable.Symbol{Name: "built_in_result", Kind: symboltable.DECLARATION})
+		bil, _ := g.SymbolTable.Declare("built_in_left", "main", symboltable.Symbol{Name: "built_in_left", Kind: symboltable.DECLARATION})
+		bir, _ := g.SymbolTable.Declare("built_in_right", "main", symboltable.Symbol{Name: "built_in_right", Kind: symboltable.DECLARATION})
+		bir2, _ := g.SymbolTable.Declare("built_in_result", "main", symboltable.Symbol{Name: "built_in_result", Kind: symboltable.DECLARATION})
+		g.SymbolTable.Initialize(bil, "main")
+		g.SymbolTable.Initialize(bir, "main")
+		g.SymbolTable.Initialize(bir2, "main")
 		g.emit(Instruction{Op: OpGoto, JumpTo: "main"})
 		for _, procedure := range node.Procedures {
 			if procedure != nil {
@@ -253,7 +257,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		if err == nil {
 			startSymbol, _ = g.SymbolTable.Declare(startVal, "main", symboltable.Symbol{Name: startVal, Kind: symboltable.CONSTANT})
 		} else {
-			startSymbol, _ = g.SymbolTable.Declare(startVal, g.currentProc, symboltable.Symbol{Name: startVal, Kind: symboltable.DECLARATION})
+			startSymbol, _ = g.SymbolTable.Lookup(startVal, g.currentProc)
 		}
 		if startSymbol == nil {
 			return fmt.Errorf("nil startSymbol")
@@ -263,7 +267,10 @@ func (g *Generator) Generate(node ast.Node) error {
 		if err == nil {
 			endSymbol, _ = g.SymbolTable.Declare(endVal, "main", symboltable.Symbol{Name: endVal, Kind: symboltable.CONSTANT})
 		} else {
-			endSymbol, _ = g.SymbolTable.Declare(endVal, g.currentProc, symboltable.Symbol{Name: endVal, Kind: symboltable.DECLARATION})
+			endSymbol, err = g.SymbolTable.Lookup(endVal, g.currentProc)
+			if err != nil {
+				return fmt.Errorf("failed to lookup the symbol for upper bound %q: %v", endVal, err)
+			}
 		}
 
 		oneSymbol, err := g.SymbolTable.Lookup("1", "main")
@@ -662,11 +669,13 @@ func (g *Generator) generateMathExpression(me *ast.MathExpression) (*symboltable
 			if err != nil {
 				return nil, err
 			}
+			g.SymbolTable.Initialize(leftSym, g.currentProc)
 			g.emit(Instruction{
 				Op:   OpAssign,
 				Arg1: leftSym,
 				Arg2: &leftPlace,
 			})
+			g.SymbolTable.Initialize(rightSym, g.currentProc)
 			g.emit(Instruction{
 				Op:   OpAssign,
 				Arg1: rightSym,
@@ -700,6 +709,8 @@ func (g *Generator) generateMathExpression(me *ast.MathExpression) (*symboltable
 		if err != nil {
 			return nil, err
 		}
+		g.SymbolTable.Initialize(leftSym, g.currentProc)
+		g.SymbolTable.Initialize(rightSym, g.currentProc)
 		g.emit(Instruction{
 			Op:   OpAssign,
 			Arg1: leftSym,
@@ -737,6 +748,8 @@ func (g *Generator) generateMathExpression(me *ast.MathExpression) (*symboltable
 		if err != nil {
 			return nil, err
 		}
+		g.SymbolTable.Initialize(leftSym, g.currentProc)
+		g.SymbolTable.Initialize(rightSym, g.currentProc)
 		g.emit(Instruction{
 			Op:   OpAssign,
 			Arg1: leftSym,

@@ -2,11 +2,11 @@ SET 2 # declaring constant 2
 STORE 111
 SET -1 # declaring constant -1
 STORE 131
-SET 1 # declaring constant 1
-STORE 100
 SET 0 # declaring constant 0
 STORE 108
-JUMP 383 # goto main
+SET 1 # declaring constant 1
+STORE 100
+JUMP 294 # goto main
 LOAD 101
 SUB 108
 JNEG 3 # to L1
@@ -254,167 +254,114 @@ STORE 145
 LOAD 145 # load {t25 TEMP 145 false 0 0 0 [] 0 0} into ACC
 STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
 RTRN 135 # ret
-LOADI 148 # load {m ARGUMENT 148 false 0 0 0 [] 1 0} into ACC
-STORE 153 # store ACC into {a DECLARATION 153 false 0 0 0 [] 0 0}
-LOADI 149 # load {n ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
-STORE 154 # store ACC into {b DECLARATION 154 false 0 0 0 [] 0 0}
-LOAD 100 # load {1 CONSTANT 100 false 0 0 0 [] 0 0} into ACC
-STOREI 150 # store ACC into {x ARGUMENT 150 false 0 0 0 [] 3 0}
 LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STOREI 151 # store ACC into {y ARGUMENT 151 false 0 0 0 [] 4 0}
-LOADI 149 # load {n ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
-STORE 155 # store ACC into {r DECLARATION 155 false 0 0 0 [] 0 0}
-LOADI 148
-SUB 100
-STORE 162
-LOAD 162 # load {t26 TEMP 162 false 0 0 0 [] 0 0} into ACC
-STORE 156 # store ACC into {s DECLARATION 156 false 0 0 0 [] 0 0}
-LOAD 154
-SUB 108
-JPOS 2 # to L45
-JUMP 114 # goto L46
-LOAD 153 # load {a DECLARATION 153 false 0 0 0 [] 0 0} into ACC
+STOREI 150 # store ACC into {p ARGUMENT 150 false 0 0 0 [] 3 0}
+LOADI 148 # load {n ARGUMENT 148 false 0 0 0 [] 1 0} into ACC
 STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 154 # load {b DECLARATION 154 false 0 0 0 [] 0 0} into ACC
+LOADI 149 # load {d ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
 STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 282
+SET 265
 STORE 135
-JUMP -113
+JUMP -96
 LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 163 # store ACC into {t27 TEMP 163 false 0 0 0 [] 0 0}
-LOAD 163 # load {t27 TEMP 163 false 0 0 0 [] 0 0} into ACC
-STORE 157 # store ACC into {reszta DECLARATION 157 false 0 0 0 [] 0 0}
-LOAD 153 # load {a DECLARATION 153 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 154 # load {b DECLARATION 154 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 293
-STORE 118
-JUMP -231
-LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 164 # store ACC into {t28 TEMP 164 false 0 0 0 [] 0 0}
-LOAD 164 # load {t28 TEMP 164 false 0 0 0 [] 0 0} into ACC
-STORE 158 # store ACC into {iloraz DECLARATION 158 false 0 0 0 [] 0 0}
-LOAD 154 # load {b DECLARATION 154 false 0 0 0 [] 0 0} into ACC
-STORE 153 # store ACC into {a DECLARATION 153 false 0 0 0 [] 0 0}
-LOAD 157 # load {reszta DECLARATION 157 false 0 0 0 [] 0 0} into ACC
-STORE 154 # store ACC into {b DECLARATION 154 false 0 0 0 [] 0 0}
-LOAD 155 # load {r DECLARATION 155 false 0 0 0 [] 0 0} into ACC
-STORE 159 # store ACC into {rr DECLARATION 159 false 0 0 0 [] 0 0}
-LOAD 158 # load {iloraz DECLARATION 158 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 155 # load {r DECLARATION 155 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 310
-STORE 105
-JUMP -300
-LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 165 # store ACC into {t29 TEMP 165 false 0 0 0 [] 0 0}
-LOAD 165 # load {t29 TEMP 165 false 0 0 0 [] 0 0} into ACC
-STORE 161 # store ACC into {tmp DECLARATION 161 false 0 0 0 [] 0 0}
-LOAD 150
-SUB 161
-JNEG 2 # to L47
-JUMP 13 # goto L49
-LOADI 149 # load {n ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 158 # load {iloraz DECLARATION 158 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 325
-STORE 105
-JUMP -315
-LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 166 # store ACC into {t30 TEMP 166 false 0 0 0 [] 0 0}
-LOAD 166 # load {t30 TEMP 166 false 0 0 0 [] 0 0} into ACC
-STORE 155 # store ACC into {r DECLARATION 155 false 0 0 0 [] 0 0}
-JUMP 3 # goto L48
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 155 # store ACC into {r DECLARATION 155 false 0 0 0 [] 0 0}
-LOAD 155
-ADDI 150
-STORE 167
-LOAD 167 # load {t31 TEMP 167 false 0 0 0 [] 0 0} into ACC
-STORE 155 # store ACC into {r DECLARATION 155 false 0 0 0 [] 0 0}
-LOAD 155
-SUB 161
-STORE 168
-LOAD 168 # load {t32 TEMP 168 false 0 0 0 [] 0 0} into ACC
-STORE 155 # store ACC into {r DECLARATION 155 false 0 0 0 [] 0 0}
-LOAD 156 # load {s DECLARATION 156 false 0 0 0 [] 0 0} into ACC
-STORE 160 # store ACC into {ss DECLARATION 160 false 0 0 0 [] 0 0}
-LOAD 158 # load {iloraz DECLARATION 158 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 156 # load {s DECLARATION 156 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 351
-STORE 105
-JUMP -341
-LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 169 # store ACC into {t33 TEMP 169 false 0 0 0 [] 0 0}
-LOAD 169 # load {t33 TEMP 169 false 0 0 0 [] 0 0} into ACC
-STORE 161 # store ACC into {tmp DECLARATION 161 false 0 0 0 [] 0 0}
+STORE 152 # store ACC into {t26 TEMP 152 false 0 0 0 [] 0 0}
+LOAD 152 # load {t26 TEMP 152 false 0 0 0 [] 0 0} into ACC
+STORE 151 # store ACC into {r DECLARATION 151 false 0 0 0 [] 0 0}
 LOAD 151
-SUB 161
-JNEG 2 # to L50
-JUMP 13 # goto L52
-LOADI 148 # load {m ARGUMENT 148 false 0 0 0 [] 1 0} into ACC
+SUB 108
+JZERO 2 # to L45
+JUMP 29 # goto L46
+LOADI 148 # load {n ARGUMENT 148 false 0 0 0 [] 1 0} into ACC
 STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 158 # load {iloraz DECLARATION 158 false 0 0 0 [] 0 0} into ACC
+LOADI 149 # load {d ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
 STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 366
-STORE 105
-JUMP -356
+SET 280
+STORE 118
+JUMP -218
 LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 170 # store ACC into {t34 TEMP 170 false 0 0 0 [] 0 0}
-LOAD 170 # load {t34 TEMP 170 false 0 0 0 [] 0 0} into ACC
-STORE 156 # store ACC into {s DECLARATION 156 false 0 0 0 [] 0 0}
-JUMP 3 # goto L51
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 156 # store ACC into {s DECLARATION 156 false 0 0 0 [] 0 0}
-LOAD 156
-ADDI 151
-STORE 171
-LOAD 171 # load {t35 TEMP 171 false 0 0 0 [] 0 0} into ACC
-STORE 156 # store ACC into {s DECLARATION 156 false 0 0 0 [] 0 0}
-LOAD 156
-SUB 161
-STORE 172
-LOAD 172 # load {t36 TEMP 172 false 0 0 0 [] 0 0} into ACC
-STORE 156 # store ACC into {s DECLARATION 156 false 0 0 0 [] 0 0}
-LOAD 159 # load {rr DECLARATION 159 false 0 0 0 [] 0 0} into ACC
-STOREI 150 # store ACC into {x ARGUMENT 150 false 0 0 0 [] 3 0}
-LOAD 160 # load {ss DECLARATION 160 false 0 0 0 [] 0 0} into ACC
-STOREI 151 # store ACC into {y ARGUMENT 151 false 0 0 0 [] 4 0}
-JUMP -116 # goto L44
-LOAD 153 # load {a DECLARATION 153 false 0 0 0 [] 0 0} into ACC
-STOREI 152 # store ACC into {z ARGUMENT 152 false 0 0 0 [] 5 0}
+STORE 153 # store ACC into {t27 TEMP 153 false 0 0 0 [] 0 0}
+LOAD 153 # load {t27 TEMP 153 false 0 0 0 [] 0 0} into ACC
+STOREI 148 # store ACC into {n ARGUMENT 148 false 0 0 0 [] 1 0}
+LOADI 150
+ADD 100
+STORE 154
+LOAD 154 # load {t28 TEMP 154 false 0 0 0 [] 0 0} into ACC
+STOREI 150 # store ACC into {p ARGUMENT 150 false 0 0 0 [] 3 0}
+LOADI 148 # load {n ARGUMENT 148 false 0 0 0 [] 1 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOADI 149 # load {d ARGUMENT 149 false 0 0 0 [] 2 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 296
+STORE 135
+JUMP -127
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 155 # store ACC into {t29 TEMP 155 false 0 0 0 [] 0 0}
+LOAD 155 # load {t29 TEMP 155 false 0 0 0 [] 0 0} into ACC
+STORE 151 # store ACC into {r DECLARATION 151 false 0 0 0 [] 0 0}
+JUMP -31 # goto L44
 RTRN 147 # ret
-GET 173
-GET 174
-SET 173
-STORE 198
-SET 174
-STORE 199
-SET 175
-STORE 200
-SET 176
-STORE 201
-SET 177
-STORE 202
-LOAD 198
+GET 156
+LOAD 111 # load {2 CONSTANT 111 false 0 0 0 [] 0 0} into ACC
+STORE 159 # store ACC into {dzielnik DECLARATION 159 false 0 0 0 [] 0 0}
+LOAD 159 # load {dzielnik DECLARATION 159 false 0 0 0 [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOAD 159 # load {dzielnik DECLARATION 159 false 0 0 0 [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 312
+STORE 105
+JUMP -302
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 160 # store ACC into {t30 TEMP 160 false 0 0 0 [] 0 0}
+LOAD 160 # load {t30 TEMP 160 false 0 0 0 [] 0 0} into ACC
+STORE 157 # store ACC into {m DECLARATION 157 false 0 0 0 [] 0 0}
+LOAD 156
+SUB 157
+JPOS 3 # to L48
+JZERO 2 # to L48
+JUMP 39 # goto L49
+SET 156
+STORE 183
+SET 159
+STORE 184
+SET 158
+STORE 185
+LOAD 183
 STORE 148
-LOAD 199
+LOAD 184
 STORE 149
-LOAD 200
+LOAD 185
 STORE 150
-LOAD 201
-STORE 151
-LOAD 202
-STORE 152
-SET 416
+SET 336
 STORE 147
-JUMP -159
-PUT 175
-PUT 176
-PUT 177
+JUMP -79
+LOAD 158
+SUB 108
+JPOS 2 # to L50
+JUMP 3 # goto L51
+PUT 159
+PUT 158
+LOAD 159
+ADD 100
+STORE 161
+LOAD 161 # load {t31 TEMP 161 false 0 0 0 [] 0 0} into ACC
+STORE 159 # store ACC into {dzielnik DECLARATION 159 false 0 0 0 [] 0 0}
+LOAD 159 # load {dzielnik DECLARATION 159 false 0 0 0 [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+LOAD 159 # load {dzielnik DECLARATION 159 false 0 0 0 [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+SET 354
+STORE 105
+JUMP -344
+LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
+STORE 162 # store ACC into {t32 TEMP 162 false 0 0 0 [] 0 0}
+LOAD 162 # load {t32 TEMP 162 false 0 0 0 [] 0 0} into ACC
+STORE 157 # store ACC into {m DECLARATION 157 false 0 0 0 [] 0 0}
+JUMP -42 # goto L47
+LOAD 156
+SUB 100
+JPOS 3 # to L52
+JNEG 2 # to L52
+JUMP 3 # goto L53
+PUT 156
+PUT 100
 HALT # halt
