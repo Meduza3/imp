@@ -99,16 +99,17 @@ func (g *Generator) Generate(node ast.Node) error {
 
 		oldProc := g.currentProc
 		g.currentProc = node.ProcHead.Name.Value // e.g. "de"
+		g.SymbolTable.IncreaseOffset(1000)
 		funcSym, _ := g.SymbolTable.Declare(g.currentProc, "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc, Kind: symboltable.PROCEDURE, ArgCount: len(node.ProcHead.ArgsDecl)})
 		g.SymbolTable.Declare(g.currentProc+"_return", "xxFunctionsxx", symboltable.Symbol{Name: g.currentProc + "_return", Kind: symboltable.RETURNADDR})
 		g.emit(Instruction{Labels: []string{node.ProcHead.Name.Value}})
 		for _, decl := range node.ProcHead.ArgsDecl {
 			sym, err := g.DeclareArgProcedure(decl, g.currentProc)
 			if err != nil {
-				fmt.Println(funcSym.ArgCount, funcSym.Arguments)
 				g.Errors = append(g.Errors, err.Error())
 			} else {
 				funcSym.Arguments = append(funcSym.Arguments, sym)
+				funcSym.ArgumentsType = append(funcSym.ArgumentsType, sym.Kind)
 			}
 		}
 		for _, decl := range node.Declarations {
@@ -127,6 +128,7 @@ func (g *Generator) Generate(node ast.Node) error {
 		g.currentProc = oldProc
 
 	case *ast.Main:
+		g.SymbolTable.IncreaseOffset(1000)
 		oldProc := g.currentProc
 		g.currentProc = "main"
 		g.emit(Instruction{Labels: []string{"main"}})
@@ -158,10 +160,16 @@ func (g *Generator) Generate(node ast.Node) error {
 		if err != nil {
 			return fmt.Errorf("failed to lookup for idSymbol: %v", err)
 		}
+		if idSymbol.Kind == symboltable.ITERATOR {
+			return fmt.Errorf("Nie mozna modyfikowac iteratora petli FOR: %d", node.Token.Line-102)
+		}
 		if isNumber(node.Identifier.Index) {
 			g.SymbolTable.Declare(node.Identifier.Index, "main", symboltable.Symbol{Name: node.Identifier.Index, Kind: symboltable.CONSTANT})
 		}
 		if idSymbol.IsTable {
+			if node.Identifier.Index == "" {
+				return fmt.Errorf("Brakuje indeksu dla zmiennej tablicowej %s w lini %d", node.Identifier.String(), node.Token.Line-102)
+			}
 			g.emit(Instruction{
 				Op:        OpAssign,
 				Arg1:      idSymbol,
@@ -171,6 +179,9 @@ func (g *Generator) Generate(node ast.Node) error {
 		} else {
 			if idSymbol == nil {
 				return fmt.Errorf("nil idSymbol")
+			}
+			if node.Identifier.Index != "" {
+				return fmt.Errorf("Bledne uzycie zmiennej %s w lini %d", node.Identifier.String(), node.Token.Line-102)
 			}
 			g.emit(Instruction{
 				Op:   OpAssign,
@@ -214,6 +225,9 @@ func (g *Generator) Generate(node ast.Node) error {
 			return nil
 		}
 		sym, _ = g.SymbolTable.Lookup(val.Value, g.currentProc)
+		if sym.Kind == symboltable.ITERATOR {
+			return fmt.Errorf("Nie mozna modyfikowac iteratora petli FOR: %d", node.Token.Line-102)
+		}
 		if isNumber(val.Index) {
 			g.SymbolTable.Declare(val.Index, "main", symboltable.Symbol{Name: val.Index, Kind: symboltable.CONSTANT})
 		}
@@ -247,17 +261,42 @@ func (g *Generator) Generate(node ast.Node) error {
 
 	case *ast.ForCommand:
 		iteratorName := node.Iterator.Value
-		iteratorSymbol, _ := g.SymbolTable.Declare(iteratorName, g.currentProc, symboltable.Symbol{Name: iteratorName, Kind: symboltable.DECLARATION})
+		iteratorSymbol, _ := g.SymbolTable.Declare(iteratorName, g.currentProc, symboltable.Symbol{Name: iteratorName, Kind: symboltable.ITERATOR})
 
-		startVal := node.From.String()
-		endVal := node.To.String()
+		fullStartVal := node.From.String() // Preserve the original string.
+		startValIndex := ""
+		startVal := fullStartVal
+		if strings.Contains(fullStartVal, "[") {
+			parts := strings.Split(fullStartVal, "[")
+			startVal = parts[0]
+			if len(parts) > 1 {
+				parts[1] = parts[1][:len(parts[1])-1]
+				startValIndex = parts[1]
+			}
+		}
+
+		fullEndVal := node.To.String() // Preserve the original string.
+		endValIndex := ""
+		endVal := fullEndVal
+		if strings.Contains(fullEndVal, "[") {
+			parts := strings.Split(fullEndVal, "[")
+			endVal = parts[0]
+			if len(parts) > 1 {
+				parts[1] = parts[1][:len(parts[1])-1]
+				endValIndex = parts[1]
+			}
+		}
+		// fmt.Printf("ENDVAL INDEX: %v \n", endValIndex)
 		// TODO: this may be a table to check for being a table
 		var startSymbol *symboltable.Symbol
 		_, err := strconv.Atoi(startVal)
 		if err == nil {
 			startSymbol, _ = g.SymbolTable.Declare(startVal, "main", symboltable.Symbol{Name: startVal, Kind: symboltable.CONSTANT})
 		} else {
-			startSymbol, _ = g.SymbolTable.Lookup(startVal, g.currentProc)
+			startSymbol, err = g.SymbolTable.Lookup(startVal, g.currentProc)
+			if err != nil {
+				return fmt.Errorf("startSymbol not found! startVal=%v currentProc=%v err=%v", startVal, g.currentProc, err)
+			}
 		}
 		if startSymbol == nil {
 			return fmt.Errorf("nil startSymbol")
@@ -284,9 +323,10 @@ func (g *Generator) Generate(node ast.Node) error {
 		labelBody := g.newLabel() // e.g. "L2"
 		labelEnd := g.newLabel()  // e.g. "L3"
 		g.emit(Instruction{
-			Op:   OpAssign, // "="
-			Arg1: iteratorSymbol,
-			Arg2: startSymbol,
+			Op:        OpAssign, // "="
+			Arg1:      iteratorSymbol,
+			Arg2:      startSymbol,
+			Arg2Index: startValIndex,
 		})
 		g.emit(Instruction{
 			Op:     OpGoto,
@@ -296,18 +336,20 @@ func (g *Generator) Generate(node ast.Node) error {
 		if !node.IsDownTo {
 			// ascending
 			g.emit(Instruction{
-				Op:     OpIfLE, // "if<="
-				Arg1:   iteratorSymbol,
-				Arg2:   endSymbol,
-				JumpTo: labelBody,
+				Op:        OpIfLE, // "if<="
+				Arg1:      iteratorSymbol,
+				Arg2:      endSymbol,
+				Arg2Index: endValIndex,
+				JumpTo:    labelBody,
 			})
 		} else {
 			// descending
 			g.emit(Instruction{
-				Op:     OpIfGE, // "if>="
-				Arg1:   iteratorSymbol,
-				Arg2:   endSymbol,
-				JumpTo: labelBody,
+				Op:        OpIfGE, // "if>="
+				Arg1:      iteratorSymbol,
+				Arg2:      endSymbol,
+				Arg2Index: endValIndex,
+				JumpTo:    labelBody,
 			})
 		}
 		g.emit(Instruction{
@@ -321,6 +363,7 @@ func (g *Generator) Generate(node ast.Node) error {
 			}
 		}
 		if !node.IsDownTo {
+			// fmt.Println("DOWNOTTTT")
 			// i = i + 1
 			tmp := g.newTemp()
 			g.emit(Instruction{
@@ -361,6 +404,9 @@ func (g *Generator) Generate(node ast.Node) error {
 		funcSym, err := g.SymbolTable.Lookup(node.Name.String(), "xxFunctionsxx")
 		if err != nil {
 			return fmt.Errorf("failed looking up function symbol: %v", err)
+		}
+		if funcSym.Name == g.currentProc {
+			return fmt.Errorf("Niezdefiniowana procedura %s w linii %d", funcSym.Name, node.Token.Line-102)
 		}
 		for _, arg := range node.Args {
 			argName := arg.String()
@@ -813,16 +859,20 @@ func (g *Generator) DeclareArgProcedure(decl ast.ArgDecl, procName string) (*sym
 
 func (g *Generator) DeclareProcedure(decl ast.Declaration, procName string) error {
 	name := decl.Pidentifier.Value
+	isTable := decl.IsTable
 	symbol := symboltable.Symbol{
-		Name: name,
-		Kind: symboltable.DECLARATION,
+		Name:    name,
+		Kind:    symboltable.DECLARATION,
+		IsTable: isTable,
 	}
-	got, _ := g.SymbolTable.Lookup(name, procName)
-	if got == nil {
-		_, err := g.SymbolTable.Declare(name, procName, symbol)
-		if err != nil {
-			return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName, err)
-		}
+	// Check if the symbol already exists
+	if got, _ := g.SymbolTable.Lookup(name, procName); got != nil {
+		return fmt.Errorf("failed to declare %v in procedure %s: identifier %q already declared", decl, procName, name)
+	}
+
+	// Attempt to declare it
+	if _, err := g.SymbolTable.Declare(name, procName, symbol); err != nil {
+		return fmt.Errorf("failed to declare %v in procedure %s: %v", decl, procName, err)
 	}
 
 	return nil

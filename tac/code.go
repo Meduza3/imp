@@ -85,7 +85,7 @@ func (ins Instruction) String() string {
 
 	// conditional jumps
 	case OpIfEQ, OpIfNE, OpIfLT, OpIfLE, OpIfGT, OpIfGE:
-		parts = append(parts, fmt.Sprintf("%s %s, %s goto %s", ins.Op, ins.Arg1.Name, ins.Arg2.Name, ins.JumpTo))
+		parts = append(parts, fmt.Sprintf("%s %s[%s], %s[%s] goto %s", ins.Op, ins.Arg1.Name, ins.Arg1Index, ins.Arg2.Name, ins.Arg2Index, ins.JumpTo))
 
 	case OpCall:
 		parts = append(parts, fmt.Sprintf("%s %s", ins.Op, ins.Arg1.Name))

@@ -21,6 +21,9 @@ type Translator struct {
 	labels                   map[string]int // Etykiety na adresy
 	errors                   []string
 	paramCount               int
+	paramTypes               []symboltable.SymbolKind
+	paramTable               []bool
+	initializedEntries       map[string]bool
 }
 
 func (t *Translator) Errors() []string {
@@ -28,17 +31,24 @@ func (t *Translator) Errors() []string {
 }
 
 func New(st symboltable.SymbolTable) *Translator {
-	return &Translator{pointerCell: st.CurrentOffset + 10, St: st, procEntries: make(map[string]int), labels: make(map[string]int)}
+	return &Translator{pointerCell: st.CurrentOffset + 10, St: st, procEntries: make(map[string]int), labels: make(map[string]int), initializedEntries: make(map[string]bool)}
 }
 
 func (t *Translator) Translate(tac []tac.Instruction) []code.Instruction {
-
+	t.InitializeName("built_in_right")
+	t.InitializeName("built_in_left")
+	t.InitializeName("built_in_result")
 	t.firstPass(tac)
 	output := t.secondPass(t.Output)
 	t.Output = output
 	return t.Output
 }
-
+func (t *Translator) InitializeName(sym string) {
+	t.initializedEntries[sym] = true
+}
+func (t *Translator) Initialize(sym *symboltable.Symbol) {
+	t.initializedEntries[sym.Name] = true
+}
 func (t *Translator) secondPass(input []code.Instruction) []code.Instruction {
 	// 1) Collect all labels => line index
 	labelAddress := make(map[string]int)
@@ -79,7 +89,7 @@ func (t *Translator) setupConstants() {
 					Operand:    val,
 					Comment:    "declaring constant " + value.Name,
 				})
-				t.emit(code.Instruction{Op: code.STORE, HasOperand: true, Operand: value.Address})
+				t.emit(code.Instruction{Op: code.STORE, HasOperand: true, Operand: value.Address, Comment: "$1"})
 			}
 		}
 	}
@@ -89,7 +99,7 @@ func (t *Translator) firstPass(inss []tac.Instruction) {
 	t.setupConstants()
 
 	for _, ins := range inss {
-		fmt.Println("# ins: ", ins.String())
+		// fmt.Println("# ins: ", ins.String())
 		// If this instruction has a label, you might record the final “machine code”
 		// address in a separate map, or emit a comment for readability:
 		var labels []string
@@ -180,7 +190,7 @@ func (t *Translator) handleRead(ins tac.Instruction) error {
 	if ins.Arg1 == nil {
 		panic("nil arg1!!!")
 	}
-	t.St.Initialize(ins.Arg1, t.currentFunctionName)
+	t.Initialize(ins.Arg1)
 	if ins.Arg1.Kind == symboltable.ARGUMENT {
 		if ins.Arg1.IsTable {
 			idxSym, err := t.getSymbol(ins.Arg1Index)
@@ -204,7 +214,7 @@ func (t *Translator) handleRead(ins tac.Instruction) error {
 				Op:         code.STORE,
 				HasOperand: true,
 				Operand:    t.pointerCell,
-				Comment:    fmt.Sprintf("pointerCell = address of %s[%s]", ins.Arg1.Name, ins.Arg1Index),
+				Comment:    fmt.Sprintf("pointerCell = address of %s[%s] $2", ins.Arg1.Name, ins.Arg1Index),
 			})
 			t.emit(code.Instruction{
 				Op:         code.GET,
@@ -257,7 +267,7 @@ func (t *Translator) handleRead(ins tac.Instruction) error {
 				Op:         code.STORE,
 				HasOperand: true,
 				Operand:    t.pointerCell,
-				Comment:    "pointerCell = address of x[n]",
+				Comment:    "pointerCell = address of x[n] $3",
 			})
 			t.emit(code.Instruction{
 				Op:         code.GET,
@@ -290,7 +300,9 @@ func (t *Translator) handleWrite(ins tac.Instruction) error {
 	if ins.Arg1 == nil {
 		panic("WRITE instruction has nil Arg1")
 	}
-
+	if ins.Arg1.Kind == symboltable.DECLARATION && !ins.Arg1.IsTable && t.initializedEntries[ins.Arg1.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", ins.Arg1.Name)
+	}
 	if ins.Arg1.Kind == symboltable.ARGUMENT {
 		if ins.Arg1.IsTable {
 			idxSym, err := t.getSymbol(ins.Arg1Index)
@@ -392,29 +404,51 @@ func (t *Translator) handleAssign(ins tac.Instruction) error {
 	if ins.Arg1 == nil || ins.Arg2 == nil {
 		return fmt.Errorf("nil argument in assignment instruction: %v", ins)
 	}
-
-	t.St.Initialize(ins.Arg1, t.currentFunctionName)
+	if ins.Arg2.Kind == symboltable.DECLARATION && !ins.Arg2.IsTable && t.initializedEntries[ins.Arg2.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", ins.Arg2.Name)
+	}
+	t.Initialize(ins.Arg1)
 	dest := ins.Arg1
 	destIndex := ins.Arg1Index
 	src := ins.Arg2
 	srcIndex := ins.Arg2Index
 	label := ins.Labels
 	if src.IsTable && dest.IsTable {
+
 		// Case 4: Array Element to Array Element (x[n] := y[m])
 		return t.handleArrayToArrayAssign(*dest, *src, destIndex, srcIndex, label)
 	} else if src.IsTable {
+		if destIndex != "" {
+			return fmt.Errorf("Bledne uzycie zmiennej %s", dest.Name)
+		}
 		// Case 3: Array Element to Variable (a := x[n])
 		return t.handleArrayToVarAssign(*dest, *src, srcIndex, label)
 	} else if dest.IsTable {
 		// Case 2: Variable to Array Element (x[n] := b)
+		if srcIndex != "" {
+			return fmt.Errorf("Bledne uzycie zmiennej %s", src.Name)
+		}
 		return t.handleVarToArrayAssign(*dest, *src, destIndex, label)
 	} else {
+		if destIndex != "" {
+			return fmt.Errorf("Bledne uzycie zmiennej %s", dest.Name)
+		}
+		if srcIndex != "" {
+			return fmt.Errorf("Bledne uzycie zmiennej %s", src.Name)
+		}
 		// Case 1: Variable to Variable (a := b)
-		return t.handleVarToVarAssign(*dest, *src, label)
+		return t.handleVarToVarAssign(*dest, *src, destIndex, srcIndex, label)
 	}
 }
 
-func (t *Translator) handleVarToVarAssign(dest, src symboltable.Symbol, label []string) error {
+func (t *Translator) handleVarToVarAssign(dest, src symboltable.Symbol, destI, srcI string, label []string) error {
+	if destI != "" {
+		return fmt.Errorf("Nieprawdilowe uzycie zmiennej %v. Nie jest tablica", dest)
+	}
+	if srcI != "" {
+		return fmt.Errorf("Nieprawdilowe uzycie zmiennej %v. Nie jest tablica", src)
+
+	}
 	destArgument := dest.Kind == symboltable.ARGUMENT
 	srcArgument := src.Kind == symboltable.ARGUMENT
 	// Load src into ACC
@@ -449,7 +483,7 @@ func (t *Translator) handleVarToVarAssign(dest, src symboltable.Symbol, label []
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    dest.Address,
-			Comment:    fmt.Sprintf("store ACC into %v", dest),
+			Comment:    fmt.Sprintf("store ACC into %v$4", dest),
 		})
 	}
 	return nil
@@ -459,6 +493,9 @@ func (t *Translator) handleVarToArrayAssign(dest, src symboltable.Symbol, destIn
 	destArgument := dest.Kind == symboltable.ARGUMENT
 	srcArgument := src.Kind == symboltable.ARGUMENT
 
+	if !dest.IsTable {
+		fmt.Errorf("Nieprawidlowe uzycie zmiennej %v", dest.Name)
+	}
 	if destArgument {
 		t.emit(code.Instruction{
 			Op:         code.LOAD,
@@ -482,11 +519,15 @@ func (t *Translator) handleVarToArrayAssign(dest, src symboltable.Symbol, destIn
 	if err != nil {
 		return fmt.Errorf("NIEPRAWIDLOWE UZYCIE TABLICY: %v", err)
 	}
+	if indexSymbol.Kind == symboltable.DECLARATION && indexSymbol.IsTable == false && t.initializedEntries[indexSymbol.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", indexSymbol.Name)
+	}
 	if indexSymbol.Kind == symboltable.ARGUMENT {
 		t.emit(code.Instruction{
 			Op:         code.STORE,
 			Operand:    t.pointerCell,
 			HasOperand: true,
+			Comment:    "$5",
 		})
 		t.emit(code.Instruction{
 			Op:         code.LOADI,
@@ -511,7 +552,7 @@ func (t *Translator) handleVarToArrayAssign(dest, src symboltable.Symbol, destIn
 		Op:         code.STORE,
 		HasOperand: true,
 		Operand:    t.pointerCell,
-		Comment:    fmt.Sprintf("pc = &%s[%s]", dest.Name, destIndex),
+		Comment:    fmt.Sprintf("pc = &%s[%s]$6", dest.Name, destIndex),
 	})
 	if srcArgument {
 		t.emit(code.Instruction{
@@ -539,6 +580,9 @@ func (t *Translator) handleVarToArrayAssign(dest, src symboltable.Symbol, destIn
 }
 
 func (t *Translator) handleArrayToVarAssign(dest, src symboltable.Symbol, srcIndex string, label []string) error {
+	if !dest.IsTable {
+		fmt.Errorf("Nieprawidlowe uzycie zmiennej %v", dest.Name)
+	}
 	destArgument := dest.Kind == symboltable.ARGUMENT
 	if err := t.loadOperandIndirect(src, srcIndex, label); err != nil {
 		return err
@@ -556,14 +600,26 @@ func (t *Translator) handleArrayToVarAssign(dest, src symboltable.Symbol, srcInd
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    dest.Address,
-			Comment:    "dest <== ACC (src)",
+			Comment:    "dest <== ACC (src)$7",
 		})
 	}
 	return nil
 }
 
 func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcIndex, destIndex string, labels []string) error {
+	if destIndex == "" {
+		return fmt.Errorf("Brak indeksu dla zmiennej %s", dest.Name)
+	}
+	if srcIndex == "" {
+		return fmt.Errorf("Brak indeksu dla zmiennej %s", src.Name)
+	}
 	destArgument := dest.Kind == symboltable.ARGUMENT
+	if !src.IsTable {
+		return fmt.Errorf("Nieprawidlowe uzycie zmiennej %v", src.Name)
+	}
+	if !dest.IsTable {
+		return fmt.Errorf("Nieprawidlowe uzycie zmiennej %v", dest.Name)
+	}
 	if destArgument {
 		t.emit(code.Instruction{
 			Op:         code.LOAD,
@@ -580,6 +636,9 @@ func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcI
 		})
 	}
 	indexSymbol, err := t.getSymbol(destIndex)
+	if indexSymbol.Kind == symboltable.DECLARATION && !indexSymbol.IsTable && t.initializedEntries[indexSymbol.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", indexSymbol.Name)
+	}
 	if err != nil {
 		return fmt.Errorf("NIEPRAWIDLOWE UZYCIE TABLICY: %v", err)
 
@@ -589,6 +648,7 @@ func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcI
 			Op:         code.STORE,
 			Operand:    t.pointerCell,
 			HasOperand: true,
+			Comment:    "$8",
 		})
 		t.emit(code.Instruction{
 			Op:         code.LOADI,
@@ -612,6 +672,7 @@ func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcI
 		Op:         code.STORE,
 		Operand:    t.pointerCell,
 		HasOperand: true,
+		Comment:    "$9",
 	})
 	err = t.loadOperandIndirect(src, srcIndex, []string{})
 	if err != nil {
@@ -627,7 +688,13 @@ func (t *Translator) handleArrayToArrayAssign(dest, src symboltable.Symbol, srcI
 
 func (t *Translator) handleAddSub(ins tac.Instruction) error {
 
-	t.St.Initialize(ins.Destination, t.currentFunctionName)
+	t.Initialize(ins.Destination)
+	if ins.Arg2.Kind == symboltable.DECLARATION && !ins.Arg2.IsTable && t.initializedEntries[ins.Arg2.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", ins.Arg2.Name)
+	}
+	if ins.Arg1.Kind == symboltable.DECLARATION && !ins.Arg1.IsTable && t.initializedEntries[ins.Arg1.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", ins.Arg1.Name)
+	}
 	dest := ins.Destination
 	Arg1Index := ins.Arg1Index
 	arg1 := ins.Arg1
@@ -683,6 +750,7 @@ func (t *Translator) handleArrayAddSubArray(op tac.Op, dest symboltable.Symbol, 
 		Op:         code.STORE,
 		HasOperand: true,
 		Operand:    t.pointerCell,
+		Comment:    "$10",
 	})
 	if arg2Argument {
 		t.emit(code.Instruction{
@@ -732,6 +800,7 @@ func (t *Translator) handleArrayAddSubArray(op tac.Op, dest symboltable.Symbol, 
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    dest.Address,
+			Comment:    "$11",
 		})
 	}
 	return nil
@@ -811,6 +880,7 @@ func (t *Translator) handleVarAddSubArray(op tac.Op, dest symboltable.Symbol, ar
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    dest.Address,
+			Comment:    "$12",
 		})
 	}
 	return nil
@@ -885,6 +955,7 @@ func (t *Translator) handleArrayAddSubVar(op tac.Op, dest symboltable.Symbol, ar
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    dest.Address,
+			Comment:    "$13",
 		})
 	}
 	return nil
@@ -949,6 +1020,7 @@ func (t *Translator) handleVarToVarAddSub(op tac.Op, dest symboltable.Symbol, ar
 			Op:         code.STORE,
 			HasOperand: true,
 			Operand:    dest.Address,
+			Comment:    "$14",
 		})
 	}
 	return nil
@@ -1035,6 +1107,7 @@ func (t *Translator) ArrayMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg1Inde
 }
 
 func (t *Translator) VarMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg2Index string, labels []string) error {
+	fmt.Println("VARMINUSARRAY")
 	if arg2.Kind == symboltable.ARGUMENT {
 		t.emit(code.Instruction{
 			Op:         code.LOAD,
@@ -1075,24 +1148,36 @@ func (t *Translator) VarMinusArrayLoad(arg1, arg2 symboltable.Symbol, Arg2Index 
 		HasOperand: true,
 		Operand:    0,
 	})
+	t.emit(code.Instruction{
+		Op:         code.STORE,
+		HasOperand: true,
+		Operand:    t.pointerCell,
+	})
+
 	if arg1.Kind == symboltable.ARGUMENT {
 		t.emit(code.Instruction{
-			Op:         code.SUBI,
+			Op:         code.LOADI,
 			HasOperand: true,
 			Operand:    arg1.Address,
 		})
 	} else {
 		t.emit(code.Instruction{
-			Op:         code.SUB,
+			Op:         code.LOAD,
 			HasOperand: true,
 			Operand:    arg1.Address,
 		})
 	}
+	t.emit(code.Instruction{
+		Op:         code.SUB,
+		HasOperand: true,
+		Operand:    t.pointerCell,
+	})
 
 	return nil
 }
 
 func (t *Translator) ArrayMinusVarLoad(arg1, arg2 symboltable.Symbol, Arg1Index string, labels []string) error {
+	fmt.Println("ARRAYMINUSVAR")
 	if arg1.Kind == symboltable.ARGUMENT {
 		t.emit(code.Instruction{
 			Op:         code.LOAD,
@@ -1180,9 +1265,14 @@ func (t *Translator) VarMinusVarLoad(arg1 symboltable.Symbol, arg2 symboltable.S
 
 // loadOperandIndirect computes the address of the array element and uses LOADI to load its value into ACC.
 func (t *Translator) loadOperandIndirect(operand symboltable.Symbol, operandIndex string, labels []string) error {
-
+	if operandIndex == "" {
+		return fmt.Errorf("Bledne uzycie tablicy. Nie ma indeksu")
+	}
 	// Compute the address: baseAddr + (index - fromVal)
 	indexSymbol, err := t.St.Lookup(operandIndex, t.currentFunctionName)
+	if indexSymbol.Kind == symboltable.DECLARATION && !indexSymbol.IsTable && t.initializedEntries[indexSymbol.Name] == false {
+		return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", indexSymbol.Name)
+	}
 	if err != nil {
 		return fmt.Errorf("NIEWLASCIWE UZYCIE TABLICY: failed to lookup the symbol for the index %d: %v", operandIndex, err)
 	}
@@ -1210,6 +1300,7 @@ func (t *Translator) loadOperandIndirect(operand symboltable.Symbol, operandInde
 			Op:         code.STORE,
 			Operand:    t.pointerCell,
 			HasOperand: true,
+			Comment:    "$15",
 		})
 		t.emit(code.Instruction{
 			Op:         code.LOADI,
@@ -1273,7 +1364,9 @@ func (t *Translator) handleArrayLoad(ins tac.Instruction) error {
 	t.emit(code.Instruction{
 		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    ins.Arg1.Address,
+		Comment:    "$16",
+
+		Operand: ins.Arg1.Address,
 	})
 
 	return nil
@@ -1283,7 +1376,10 @@ func (t *Translator) handleDiv(ins tac.Instruction) error {
 	if ins.Arg2.Name == "2" {
 		destArgument := ins.Destination.Kind == symboltable.ARGUMENT
 		arg1Argument := ins.Arg1.Kind == symboltable.ARGUMENT
-		t.St.Initialize(ins.Destination, t.currentFunctionName)
+		if ins.Arg1.Kind == symboltable.DECLARATION && t.initializedEntries[ins.Arg1.Name] == false {
+			return fmt.Errorf("Uzycie nie zainicjalizowanej zmiennej %s", ins.Arg1.Name)
+		}
+		t.Initialize(ins.Destination)
 		if arg1Argument {
 			t.emit(code.Instruction{
 				Op:         code.LOADI,
@@ -1313,6 +1409,7 @@ func (t *Translator) handleDiv(ins tac.Instruction) error {
 				Op:         code.STORE,
 				HasOperand: true,
 				Operand:    ins.Destination.Address,
+				Comment:    "$17",
 			})
 		}
 		return nil
@@ -1321,7 +1418,7 @@ func (t *Translator) handleDiv(ins tac.Instruction) error {
 }
 
 func (t *Translator) handleParam(param *symboltable.Symbol, labels []string) error {
-	t.St.Initialize(param, t.currentFunctionName)
+	t.Initialize(param)
 	if param.Kind == symboltable.ARGUMENT {
 		t.emit(code.Instruction{
 			Op:         code.LOAD,
@@ -1337,10 +1434,17 @@ func (t *Translator) handleParam(param *symboltable.Symbol, labels []string) err
 			Operand:    param.Address,
 		})
 	}
+	if param.IsTable {
+		t.paramTable = append(t.paramTable, true)
+	} else {
+		t.paramTable = append(t.paramTable, false)
+	}
 	t.emit(code.Instruction{
-		Op:         code.STORE,
+		Op:      code.STORE,
+		Comment: "$18",
+
 		HasOperand: true,
-		Operand:    t.pointerCell + 10 + t.paramCount,
+		Operand:    t.pointerCell + 1000000 + t.paramCount,
 	})
 	t.paramCount++
 	return nil
@@ -1358,20 +1462,26 @@ func (t *Translator) handleCall(ins tac.Instruction) error {
 				Op:         code.LOAD,
 				HasOperand: true,
 				Labels:     ins.Labels,
-				Operand:    t.pointerCell + 10 + t.paramCount - i,
+				Operand:    t.pointerCell + 1000000 + t.paramCount - i,
 			})
 		} else {
 			t.emit(code.Instruction{
 				Op:         code.LOAD,
 				HasOperand: true,
-				Operand:    t.pointerCell + 10 + t.paramCount - i,
+				Operand:    t.pointerCell + 1000000 + t.paramCount - i,
 			})
 		}
 		t.emit(code.Instruction{
 			Op:         code.STORE,
 			HasOperand: true,
-			Operand:    procSym.Arguments[argCount-i].Address,
+			Comment:    "$19",
+
+			Operand: procSym.Arguments[argCount-i].Address,
 		})
+
+		if procSym.Arguments[argCount-i].IsTable != t.paramTable[t.paramCount-i] {
+			return fmt.Errorf("Niewlasciwy parametr procedury %s", procSym.Name)
+		}
 	}
 	returnSymbol, err := t.St.Lookup(ins.Arg1.Name+"_return", "xxFunctionsxx")
 	if err != nil {
@@ -1394,7 +1504,9 @@ func (t *Translator) handleCall(ins tac.Instruction) error {
 	t.emit(code.Instruction{
 		Op:         code.STORE,
 		HasOperand: true,
-		Operand:    returnSymbol.Address,
+		Comment:    "$20",
+
+		Operand: returnSymbol.Address,
 	})
 	t.emit(code.Instruction{
 		Op:          code.JUMP,

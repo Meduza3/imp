@@ -10,6 +10,10 @@ type SymbolTable struct {
 	CurrentOffset int
 }
 
+func (st *SymbolTable) IncreaseOffset(by int) {
+	st.CurrentOffset += by
+}
+
 func (st *SymbolTable) Display(w io.Writer, prefix string) {
 	for function, table := range st.Table {
 		io.WriteString(w, prefix+"=="+function+"==\n")
@@ -46,6 +50,7 @@ const (
 	PROCEDURE   SymbolKind = "PROCEDURE"
 	CONSTANT    SymbolKind = "CONSTANT"
 	RETURNADDR  SymbolKind = "RETURNADDR"
+	ITERATOR    SymbolKind = "ITERATOR"
 	TEMP        SymbolKind = "TEMP"
 )
 
@@ -59,8 +64,10 @@ type Symbol struct {
 	To            int
 	Size          int
 	Arguments     []*Symbol
+	ArgumentsType []SymbolKind
 	ArgumentIndex int
-	ArgCount      int
+
+	ArgCount int
 }
 
 func New() *SymbolTable {

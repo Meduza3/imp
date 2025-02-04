@@ -194,6 +194,7 @@ func StartFile(filepath string, out io.Writer) {
 	// fmt.Println("# parsed. ")
 	for _, err := range p.Errors() {
 		fmt.Printf("# parse Error: %s\n", err)
+		return
 	}
 	g := tac.NewGenerator()
 	// fmt.Printf("# generating TAC...		")
@@ -215,17 +216,19 @@ func StartFile(filepath string, out io.Writer) {
 
 	for _, err := range g.Errors {
 		fmt.Printf("# Generator Error: %s\n", err)
+		return
 	}
 	translator := translator.New(*g.SymbolTable)
 	// fmt.Println("# Translating TAC...		")
 	translator.Translate(g.Instructions)
 	for _, err := range translator.Errors() {
 		fmt.Printf("# ERROR: %s\n", err)
+		return
 	}
 	if len(translator.Errors()) == 0 {
 		for _, instr := range translator.Output {
 			fmt.Fprintf(out, "%s\n", instr.String())
 		}
 	}
-	//translator.St.Display(out, "# ")
+	translator.St.Display(os.Stdout, "")
 }

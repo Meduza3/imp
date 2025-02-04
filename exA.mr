@@ -1,117 +1,117 @@
-SET 0 # declaring constant 0
-STORE 108
 SET 1 # declaring constant 1
-STORE 100
-SET 2 # declaring constant 2
-STORE 111
-SET -1 # declaring constant -1
-STORE 131
+STORE 100 # $1
+SET 0 # declaring constant 0
+STORE 1108 # $1
 SET 24 # declaring constant 24
-STORE 148
+STORE 4148 # $1
+SET -1 # declaring constant -1
+STORE 2131 # $1
+SET 2 # declaring constant 2
+STORE 1111 # $1
 JUMP 248 # goto main
 LOAD 101
-SUB 108
+SUB 1108
 JNEG 3 # to L1
 JZERO 2 # to L1
 JUMP 11 # goto L2
-LOAD 108
+LOAD 1108
 SUB 102
-STORE 109
-LOAD 109 # load {t1 TEMP 109 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-LOAD 108
+STORE 1109 # $14
+LOAD 1109 # load {t1 true TEMP 1109 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
+LOAD 1108
 SUB 101
-STORE 110
-LOAD 110 # load {t2 TEMP 110 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
+STORE 1110 # $14
+LOAD 1110 # load {t2 true TEMP 1110 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
 LOAD 101
 HALF
-STORE 112
-LOAD 112 # load {t3 TEMP 112 false 0 0 0 [] 0 0} into ACC
-STORE 106 # store ACC into {temp DECLARATION 106 false 0 0 0 [] 0 0}
-LOAD 106
-ADD 106
-STORE 113
-LOAD 113 # load {t4 TEMP 113 false 0 0 0 [] 0 0} into ACC
-STORE 106 # store ACC into {temp DECLARATION 106 false 0 0 0 [] 0 0}
-LOAD 106
+STORE 1112 # $17
+LOAD 1112 # load {t3 true TEMP 1112 false 0 0 0 [] [] 0 0} into ACC
+STORE 1106 # store ACC into {temp false DECLARATION 1106 false 0 0 0 [] [] 0 0}$4
+LOAD 1106
+ADD 1106
+STORE 1113 # $14
+LOAD 1113 # load {t4 true TEMP 1113 false 0 0 0 [] [] 0 0} into ACC
+STORE 1106 # store ACC into {temp false DECLARATION 1106 false 0 0 0 [] [] 0 0}$4
+LOAD 1106
 SUB 101
 JPOS 3 # to L5
 JNEG 2 # to L5
 JUMP 6 # goto L6
 LOAD 103
 ADD 102
-STORE 114
-LOAD 114 # load {t5 TEMP 114 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
+STORE 1114 # $14
+LOAD 1114 # load {t5 true TEMP 1114 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
 LOAD 102
 ADD 102
-STORE 115
-LOAD 115 # load {t6 TEMP 115 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+STORE 1115 # $14
+LOAD 1115 # load {t6 true TEMP 1115 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
 LOAD 101
 HALF
-STORE 116
-LOAD 116 # load {t7 TEMP 116 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+STORE 1116 # $17
+LOAD 1116 # load {t7 true TEMP 1116 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
 LOAD 101
-SUB 108
+SUB 1108
 JZERO 2 # to L4
 JUMP -33 # goto L3
-RTRN 105 # ret
+RTRN 1105 # ret
 LOAD 102
-SUB 108
+SUB 1108
 JZERO 2 # to L7
 JUMP 4 # goto L9
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
 JUMP 100 # goto L8
 LOAD 101
-SUB 108
+SUB 1108
 JNEG 3 # to L10
 JZERO 2 # to L10
 JUMP 9 # goto L12
-LOAD 108
+LOAD 1108
 SUB 101
-STORE 122
-LOAD 122 # load {t8 TEMP 122 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 100 # load {1 CONSTANT 100 false 0 0 0 [] 0 0} into ACC
-STORE 120 # store ACC into {result_sign DECLARATION 120 false 0 0 0 [] 0 0}
+STORE 2122 # $14
+LOAD 2122 # load {t8 true TEMP 2122 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
+LOAD 100 # load {1 false CONSTANT 100 false 0 0 0 [] [] 0 0} into ACC
+STORE 2120 # store ACC into {result_sign false DECLARATION 2120 false 0 0 0 [] [] 0 0}$4
 JUMP 3 # goto L11
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 120 # store ACC into {result_sign DECLARATION 120 false 0 0 0 [] 0 0}
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
-LOAD 100 # load {1 CONSTANT 100 false 0 0 0 [] 0 0} into ACC
-STORE 119 # store ACC into {multiple DECLARATION 119 false 0 0 0 [] 0 0}
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 2120 # store ACC into {result_sign false DECLARATION 2120 false 0 0 0 [] [] 0 0}$4
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
+LOAD 100 # load {1 false CONSTANT 100 false 0 0 0 [] [] 0 0} into ACC
+STORE 2119 # store ACC into {multiple false DECLARATION 2119 false 0 0 0 [] [] 0 0}$4
 LOAD 102
-SUB 108
+SUB 1108
 JNEG 3 # to L13
 JZERO 2 # to L13
 JUMP 11 # goto L14
-LOAD 108
+LOAD 1108
 SUB 102
-STORE 123
-LOAD 123 # load {t9 TEMP 123 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+STORE 2123 # $14
+LOAD 2123 # load {t9 true TEMP 2123 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
 LOAD 100
-SUB 120
-STORE 124
-LOAD 124 # load {t10 TEMP 124 false 0 0 0 [] 0 0} into ACC
-STORE 120 # store ACC into {result_sign DECLARATION 120 false 0 0 0 [] 0 0}
-LOAD 119
-ADD 119
-STORE 125
-LOAD 125 # load {t11 TEMP 125 false 0 0 0 [] 0 0} into ACC
-STORE 119 # store ACC into {multiple DECLARATION 119 false 0 0 0 [] 0 0}
+SUB 2120
+STORE 2124 # $14
+LOAD 2124 # load {t10 true TEMP 2124 false 0 0 0 [] [] 0 0} into ACC
+STORE 2120 # store ACC into {result_sign false DECLARATION 2120 false 0 0 0 [] [] 0 0}$4
+LOAD 2119
+ADD 2119
+STORE 2125 # $14
+LOAD 2125 # load {t11 true TEMP 2125 false 0 0 0 [] [] 0 0} into ACC
+STORE 2119 # store ACC into {multiple false DECLARATION 2119 false 0 0 0 [] [] 0 0}$4
 LOAD 102
 ADD 102
-STORE 126
-LOAD 126 # load {t12 TEMP 126 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
+STORE 2126 # $14
+LOAD 2126 # load {t12 true TEMP 2126 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
 LOAD 102
 SUB 101
 JPOS 3 # to L16
@@ -124,252 +124,258 @@ JZERO 2 # to L19
 JUMP 11 # goto L20
 LOAD 101
 SUB 102
-STORE 127
-LOAD 127 # load {t13 TEMP 127 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+STORE 2127 # $14
+LOAD 2127 # load {t13 true TEMP 2127 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
 LOAD 103
-ADD 119
-STORE 128
-LOAD 128 # load {t14 TEMP 128 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
+ADD 2119
+STORE 2128 # $14
+LOAD 2128 # load {t14 true TEMP 2128 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
 LOAD 102
 HALF
-STORE 129
-LOAD 129 # load {t15 TEMP 129 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-LOAD 119
+STORE 2129 # $17
+LOAD 2129 # load {t15 true TEMP 2129 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
+LOAD 2119
 HALF
-STORE 130
-LOAD 130 # load {t16 TEMP 130 false 0 0 0 [] 0 0} into ACC
-STORE 119 # store ACC into {multiple DECLARATION 119 false 0 0 0 [] 0 0}
-LOAD 119
-SUB 108
+STORE 2130 # $17
+LOAD 2130 # load {t16 true TEMP 2130 false 0 0 0 [] [] 0 0} into ACC
+STORE 2119 # store ACC into {multiple false DECLARATION 2119 false 0 0 0 [] [] 0 0}$4
+LOAD 2119
+SUB 1108
 JZERO 2 # to L18
 JUMP -28 # goto L17
-LOAD 120
-SUB 108
+LOAD 2120
+SUB 1108
 JPOS 3 # to L21
 JNEG 2 # to L21
 JUMP 17 # goto L22
 LOAD 101
-SUB 108
+SUB 1108
 JPOS 3 # to L23
 JNEG 2 # to L23
 JUMP 7 # goto L25
-LOAD 131
+LOAD 2131
 SUB 103
-STORE 132
-LOAD 132 # load {t17 TEMP 132 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
+STORE 2132 # $14
+LOAD 2132 # load {t17 true TEMP 2132 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
 JUMP 6 # goto L24
-LOAD 108
+LOAD 1108
 SUB 103
-STORE 133
-LOAD 133 # load {t18 TEMP 133 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
-RTRN 118 # ret
+STORE 2133 # $14
+LOAD 2133 # load {t18 true TEMP 2133 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
+RTRN 2118 # ret
 LOAD 101
-SUB 108
+SUB 1108
 JNEG 3 # to L26
 JZERO 2 # to L26
 JUMP 9 # goto L28
-LOAD 108
+LOAD 1108
 SUB 101
-STORE 139
-LOAD 139 # load {t19 TEMP 139 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 100 # load {1 CONSTANT 100 false 0 0 0 [] 0 0} into ACC
-STORE 137 # store ACC into {dividend_sign DECLARATION 137 false 0 0 0 [] 0 0}
+STORE 3139 # $14
+LOAD 3139 # load {t19 true TEMP 3139 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
+LOAD 100 # load {1 false CONSTANT 100 false 0 0 0 [] [] 0 0} into ACC
+STORE 3137 # store ACC into {dividend_sign false DECLARATION 3137 false 0 0 0 [] [] 0 0}$4
 JUMP 3 # goto L27
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 137 # store ACC into {dividend_sign DECLARATION 137 false 0 0 0 [] 0 0}
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 3137 # store ACC into {dividend_sign false DECLARATION 3137 false 0 0 0 [] [] 0 0}$4
 LOAD 102
-SUB 108
+SUB 1108
 JNEG 3 # to L29
 JZERO 2 # to L29
 JUMP 9 # goto L31
-LOAD 108
+LOAD 1108
 SUB 102
-STORE 140
-LOAD 140 # load {t20 TEMP 140 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-LOAD 100 # load {1 CONSTANT 100 false 0 0 0 [] 0 0} into ACC
-STORE 138 # store ACC into {divisor_sign DECLARATION 138 false 0 0 0 [] 0 0}
+STORE 3140 # $14
+LOAD 3140 # load {t20 true TEMP 3140 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
+LOAD 100 # load {1 false CONSTANT 100 false 0 0 0 [] [] 0 0} into ACC
+STORE 3138 # store ACC into {divisor_sign false DECLARATION 3138 false 0 0 0 [] [] 0 0}$4
 JUMP 3 # goto L30
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 138 # store ACC into {divisor_sign DECLARATION 138 false 0 0 0 [] 0 0}
-LOAD 102 # load {built_in_right DECLARATION 102 false 0 0 0 [] 0 0} into ACC
-STORE 136 # store ACC into {current_divisor DECLARATION 136 false 0 0 0 [] 0 0}
-LOAD 136
-ADD 136
-STORE 141
-LOAD 141 # load {t21 TEMP 141 false 0 0 0 [] 0 0} into ACC
-STORE 136 # store ACC into {current_divisor DECLARATION 136 false 0 0 0 [] 0 0}
-LOAD 136
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 3138 # store ACC into {divisor_sign false DECLARATION 3138 false 0 0 0 [] [] 0 0}$4
+LOAD 102 # load {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0} into ACC
+STORE 3136 # store ACC into {current_divisor false DECLARATION 3136 false 0 0 0 [] [] 0 0}$4
+LOAD 3136
+ADD 3136
+STORE 3141 # $14
+LOAD 3141 # load {t21 true TEMP 3141 false 0 0 0 [] [] 0 0} into ACC
+STORE 3136 # store ACC into {current_divisor false DECLARATION 3136 false 0 0 0 [] [] 0 0}$4
+LOAD 3136
 SUB 101
 JPOS 2 # to L33
 JUMP -8 # goto L32
-LOAD 136
+LOAD 3136
 HALF
-STORE 142
-LOAD 142 # load {t22 TEMP 142 false 0 0 0 [] 0 0} into ACC
-STORE 136 # store ACC into {current_divisor DECLARATION 136 false 0 0 0 [] 0 0}
+STORE 3142 # $17
+LOAD 3142 # load {t22 true TEMP 3142 false 0 0 0 [] [] 0 0} into ACC
+STORE 3136 # store ACC into {current_divisor false DECLARATION 3136 false 0 0 0 [] [] 0 0}$4
 LOAD 101
-SUB 136
+SUB 3136
 JPOS 3 # to L36
 JZERO 2 # to L36
 JUMP 6 # goto L37
 LOAD 101
-SUB 136
-STORE 143
-LOAD 143 # load {t23 TEMP 143 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
+SUB 3136
+STORE 3143 # $14
+LOAD 3143 # load {t23 true TEMP 3143 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
 LOAD 101
 SUB 102
 JNEG 2 # to L35
 JUMP -18 # goto L34
-LOAD 101 # load {built_in_left DECLARATION 101 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
+LOAD 101 # load {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
 LOAD 103
-SUB 108
+SUB 1108
 JPOS 3 # to L38
 JNEG 2 # to L38
 JUMP 21 # goto L39
-LOAD 137
-SUB 108
+LOAD 3137
+SUB 1108
 JPOS 3 # to L40
 JNEG 2 # to L40
 JUMP 6 # goto L41
 LOAD 102
 SUB 103
-STORE 144
-LOAD 144 # load {t24 TEMP 144 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
-LOAD 138
-SUB 108
+STORE 3144 # $14
+LOAD 3144 # load {t24 true TEMP 3144 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
+LOAD 3138
+SUB 1108
 JPOS 3 # to L42
 JNEG 2 # to L42
 JUMP 6 # goto L43
 LOAD 103
 SUB 102
-STORE 145
-LOAD 145 # load {t25 TEMP 145 false 0 0 0 [] 0 0} into ACC
-STORE 103 # store ACC into {built_in_result DECLARATION 103 false 0 0 0 [] 0 0}
-RTRN 135 # ret
-LOAD 148 # load {24 CONSTANT 148 false 0 0 0 [] 0 0} into ACC
-STORE 146 # store ACC into {n DECLARATION 146 false 0 0 0 [] 0 0}
-SET 199 # ACC <== Address of tc[0]
-ADD 108 # add index (0) to ACC
-STORE 250 # pc = &tc[0]
-LOAD 146 # load n into ACC
-STOREI 250 # p[pointerCell] <== ACC
-SET 199 # ACC <== Address of tc[0]
-ADD 108 # add index at address to ACC
+STORE 3145 # $14
+LOAD 3145 # load {t25 true TEMP 3145 false 0 0 0 [] [] 0 0} into ACC
+STORE 103 # store ACC into {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0}$4
+RTRN 3135 # ret
+LOAD 4148 # load {24 false CONSTANT 4148 false 0 0 0 [] [] 0 0} into ACC
+STORE 4146 # store ACC into {n false DECLARATION 4146 false 0 0 0 [] [] 0 0}$4
+SET 4199 # ACC <== Address of tc[0]
+ADD 1108 # add index (0) to ACC
+STORE 4248 # pc = &tc[0]$6
+LOAD 4146 # load n into ACC
+STOREI 4248 # p[pointerCell] <== ACC
+SET 4199 # ACC <== Address of tc[0]
+ADD 1108 # add index at address to ACC
 LOADI 0 # ACC' <== tc[ACC]
-STORE 224 # dest <== ACC (src)
-LOAD 146
-SUB 224
-STORE 225
-SET 199 # ACC <== Address of tc[0]
-ADD 146 # add index (n) to ACC
-STORE 250 # pc = &tc[n]
-LOAD 225 # load t27 into ACC
-STOREI 250 # p[pointerCell] <== ACC
-SET 199 # ACC <== Address of tc[0]
-ADD 108 # add index at address to ACC
+STORE 4224 # dest <== ACC (src)$7
+LOAD 4146
+SUB 4224
+STORE 4225 # $14
+SET 4199 # ACC <== Address of tc[0]
+ADD 4146 # add index (n) to ACC
+STORE 4248 # pc = &tc[n]$6
+LOAD 4225 # load t27 into ACC
+STOREI 4248 # p[pointerCell] <== ACC
+SET 4199 # ACC <== Address of tc[0]
+ADD 1108 # add index at address to ACC
 LOADI 0 # ACC' <== tc[ACC]
-STORE 226 # dest <== ACC (src)
-LOAD 226
+STORE 4226 # dest <== ACC (src)$7
+LOAD 4226
 ADD 100
-STORE 227
-LOAD 227 # load {t29 TEMP 227 false 0 0 0 [] 0 0} into ACC
-STORE 147 # store ACC into {j DECLARATION 147 false 0 0 0 [] 0 0}
-LOAD 229 # load {tc[0] DECLARATION 229 false 0 0 0 [] 0 0} into ACC
-STORE 228 # store ACC into {i DECLARATION 228 false 0 0 0 [] 0 0}
+STORE 4227 # $14
+LOAD 4227 # load {t29 true TEMP 4227 false 0 0 0 [] [] 0 0} into ACC
+STORE 4147 # store ACC into {j false DECLARATION 4147 false 0 0 0 [] [] 0 0}$4
+SET 4199 # ACC <== Address of tc[0]
+ADD 1108 # add index at address to ACC
+LOADI 0 # ACC' <== tc[ACC]
+STORE 4228 # dest <== ACC (src)$7
 JUMP 1 # goto L44
-LOAD 228
-SUB 230
+SET 4199
+ADD 4146
+LOADI 0
+STORE 4248
+LOAD 4228
+SUB 4248
 JPOS 3 # to L45
 JZERO 2 # to L45
 JUMP 20 # goto L46
-SET 149 # ACC <== Address of ta[0]
-ADD 228 # add index (i) to ACC
-STORE 250 # pc = &ta[i]
-LOAD 228 # load i into ACC
-STOREI 250 # p[pointerCell] <== ACC
-LOAD 146
-SUB 228
-STORE 231
-SET 174 # ACC <== Address of tb[0]
-ADD 228 # add index (i) to ACC
-STORE 250 # pc = &tb[i]
-LOAD 231 # load t30 into ACC
-STOREI 250 # p[pointerCell] <== ACC
-LOAD 228
+SET 4149 # ACC <== Address of ta[0]
+ADD 4228 # add index (i) to ACC
+STORE 4248 # pc = &ta[i]$6
+LOAD 4228 # load i into ACC
+STOREI 4248 # p[pointerCell] <== ACC
+LOAD 4146
+SUB 4228
+STORE 4229 # $14
+SET 4174 # ACC <== Address of tb[0]
+ADD 4228 # add index (i) to ACC
+STORE 4248 # pc = &tb[i]$6
+LOAD 4229 # load t30 into ACC
+STOREI 4248 # p[pointerCell] <== ACC
+LOAD 4228
 SUB 100
-STORE 232
-LOAD 232 # load {t31 TEMP 232 false 0 0 0 [] 0 0} into ACC
-STORE 228 # store ACC into {i DECLARATION 228 false 0 0 0 [] 0 0}
-JUMP -23 # goto L44
-SET 199 # ACC <== Address of tc[0]
-ADD 146 # add index at address to ACC
+STORE 4230 # $14
+LOAD 4230 # load {t31 true TEMP 4230 false 0 0 0 [] [] 0 0} into ACC
+STORE 4228 # store ACC into {i false ITERATOR 4228 false 0 0 0 [] [] 0 0}$4
+JUMP -27 # goto L44
+SET 4199 # ACC <== Address of tc[0]
+ADD 4146 # add index at address to ACC
 LOADI 0 # ACC' <== tc[ACC]
-STORE 233 # dest <== ACC (src)
-LOAD 233 # load {t32 TEMP 233 false 0 0 0 [] 0 0} into ACC
-STORE 147 # store ACC into {j DECLARATION 147 false 0 0 0 [] 0 0}
-SET 199 # ACC <== Address of tc[0]
-ADD 108 # add index at address to ACC
+STORE 4231 # dest <== ACC (src)$7
+LOAD 4231 # load {t32 true TEMP 4231 false 0 0 0 [] [] 0 0} into ACC
+STORE 4147 # store ACC into {j false DECLARATION 4147 false 0 0 0 [] [] 0 0}$4
+SET 4199 # ACC <== Address of tc[0]
+ADD 1108 # add index at address to ACC
 LOADI 0 # ACC' <== tc[ACC]
-STORE 234 # dest <== ACC (src)
-LOAD 147
-SUB 234
+STORE 4232 # dest <== ACC (src)$7
+LOAD 4147
+SUB 4232
 JNEG 3 # to L48
 JZERO 2 # to L48
 JUMP 29 # goto L49
-SET 149 # ACC <== Address of ta[0]
-ADD 147 # add index at address to ACC
+SET 4149 # ACC <== Address of ta[0]
+ADD 4147 # add index at address to ACC
 LOADI 0 # ACC' <== ta[ACC]
-STORE 235 # dest <== ACC (src)
-SET 174 # ACC <== Address of tb[0]
-ADD 147 # add index at address to ACC
+STORE 4233 # dest <== ACC (src)$7
+SET 4174 # ACC <== Address of tb[0]
+ADD 4147 # add index at address to ACC
 LOADI 0 # ACC' <== tb[ACC]
-STORE 236 # dest <== ACC (src)
-LOAD 235 # load {t34 TEMP 235 false 0 0 0 [] 0 0} into ACC
-STORE 101 # store ACC into {built_in_left DECLARATION 101 false 0 0 0 [] 0 0}
-LOAD 236 # load {t35 TEMP 236 false 0 0 0 [] 0 0} into ACC
-STORE 102 # store ACC into {built_in_right DECLARATION 102 false 0 0 0 [] 0 0}
-SET 343
-STORE 105
-JUMP -331
-LOAD 103 # load {built_in_result DECLARATION 103 false 0 0 0 [] 0 0} into ACC
-STORE 237 # store ACC into {t36 TEMP 237 false 0 0 0 [] 0 0}
-SET 199 # ACC <== Address of tc[0]
-ADD 147 # add index (j) to ACC
-STORE 250 # pc = &tc[j]
-LOAD 237 # load t36 into ACC
-STOREI 250 # p[pointerCell] <== ACC
-LOAD 147
+STORE 4234 # dest <== ACC (src)$7
+LOAD 4233 # load {t34 true TEMP 4233 false 0 0 0 [] [] 0 0} into ACC
+STORE 101 # store ACC into {built_in_left true DECLARATION 101 false 0 0 0 [] [] 0 0}$4
+LOAD 4234 # load {t35 true TEMP 4234 false 0 0 0 [] [] 0 0} into ACC
+STORE 102 # store ACC into {built_in_right true DECLARATION 102 false 0 0 0 [] [] 0 0}$4
+SET 349
+STORE 1105 # $20
+JUMP -337
+LOAD 103 # load {built_in_result true DECLARATION 103 false 0 0 0 [] [] 0 0} into ACC
+STORE 4235 # store ACC into {t36 true TEMP 4235 false 0 0 0 [] [] 0 0}$4
+SET 4199 # ACC <== Address of tc[0]
+ADD 4147 # add index (j) to ACC
+STORE 4248 # pc = &tc[j]$6
+LOAD 4235 # load t36 into ACC
+STOREI 4248 # p[pointerCell] <== ACC
+LOAD 4147
 ADD 100
-STORE 238
-LOAD 238 # load {t37 TEMP 238 false 0 0 0 [] 0 0} into ACC
-STORE 147 # store ACC into {j DECLARATION 147 false 0 0 0 [] 0 0}
+STORE 4236 # $14
+LOAD 4236 # load {t37 true TEMP 4236 false 0 0 0 [] [] 0 0} into ACC
+STORE 4147 # store ACC into {j false DECLARATION 4147 false 0 0 0 [] [] 0 0}$4
 JUMP -36 # goto L47
-LOAD 108 # load {0 CONSTANT 108 false 0 0 0 [] 0 0} into ACC
-STORE 228 # store ACC into {i DECLARATION 228 false 0 0 0 [] 0 0}
+LOAD 1108 # load {0 false CONSTANT 1108 false 0 0 0 [] [] 0 0} into ACC
+STORE 4228 # store ACC into {i false ITERATOR 4228 false 0 0 0 [] [] 0 0}$4
 JUMP 1 # goto L50
-LOAD 228
-SUB 146
+LOAD 4228
+SUB 4146
 JNEG 3 # to L51
 JZERO 2 # to L51
 JUMP 11 # goto L52
-SET 199 # L51:  write[i] tc
-ADD 228
+SET 4199 # L51:  write[i] tc
+ADD 4228
 LOADI 0 # load x[n] into ACC
 PUT 0 # write x[n]
-LOAD 228
+LOAD 4228
 ADD 100
-STORE 239
-LOAD 239 # load {t38 TEMP 239 false 0 0 0 [] 0 0} into ACC
-STORE 228 # store ACC into {i DECLARATION 228 false 0 0 0 [] 0 0}
+STORE 4237 # $14
+LOAD 4237 # load {t38 true TEMP 4237 false 0 0 0 [] [] 0 0} into ACC
+STORE 4228 # store ACC into {i false ITERATOR 4228 false 0 0 0 [] [] 0 0}$4
 JUMP -14 # goto L50
 HALT # halt

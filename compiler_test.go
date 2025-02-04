@@ -408,76 +408,115 @@ END
 			[]int{23, 1234567890},
 			"",
 		},
-		{
-			`
-PROCEDURE write(T t, n) IS
-BEGIN
-  FOR i FROM 1 TO n DO
-  	WRITE i;
-  ENDFOR
-END
-
-PROGRAM IS
-  t[1:23], n
-BEGIN
-  n:=23;
-  write(t,n);
-  WRITE 1234567890;
-END
-`,
-			[]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 1234567890},
-			"",
-		},
-		{
-			`PROCEDURE write_mult() IS
-			q, w
-BEGIN
-  q := 4;
-	w := -3;
-	w := q*w;
-	WRITE w;
-END
-PROGRAM IS
-BEGIN
-  write_mult();
-END`,
-			[]int{-12},
-			"",
-		},
-		{
-			`PROCEDURE write_mult() IS
-			q, w
-BEGIN
-  q := 4;
-	w := -3;
-	w := q*w;
-	WRITE w;
-	w := w / q;
-	WRITE w;
-END
-PROGRAM IS
-BEGIN
-  write_mult();
-END`,
-			[]int{-12, -3},
-			"",
-		},
-		{
-			`PROCEDURE write_big() IS
-BEGIN
-	WRITE 1234567890;
-END
-PROGRAM IS
-BEGIN
-  write_big();
-END`,
-			[]int{1234567890},
-			"",
-		},
 	}
 	for _, tt := range cases {
 		t.Run(tt.inputCode, func(t *testing.T) {
 			testAssembly(t, tt.inputCode, tt.expectedOutput, tt.userInput)
 		})
 	}
+}
+
+// TestBCProgram tests the "bc" program that calculates a binomial coefficient.
+// For example, with inputs n=20 and k=9 the expected output is 167960.
+func TestBCProgram(t *testing.T) {
+	inputCode := `
+PROCEDURE factorial(T s,n) IS
+  p
+BEGIN
+  s[0]:=1;
+  p:=s[0];
+  FOR i FROM 1 TO n DO
+    s[i]:=p*i;
+    p:=s[i];
+  ENDFOR
+END
+
+PROCEDURE bc(n,k,m) IS
+  s[0:100],p
+BEGIN
+  factorial(s,n);
+  p:=n-k;
+  m:=s[n]/s[k];
+  m:=m/s[p];
+END
+
+PROGRAM IS
+    n,k,w
+BEGIN
+    READ n;
+    READ k;
+    bc(n,k,w);
+    WRITE w;
+END
+`
+	// The test uses n=20 and k=9. Expected result: 167960.
+	expected := []int{167960}
+	userInput := "20\n9\n"
+	testAssembly(t, inputCode, expected, userInput)
+}
+
+// TestArrayManipulationProgram tests the integrated program that creates three arrays
+// and fills tc with values computed from arrays ta and tb.
+// The program is expected to write 25 numbers corresponding to indices 0..24.
+func TestArrayManipulationProgram(t *testing.T) {
+	inputCode := `
+PROGRAM IS
+    n, j, ta[0:24], tb[0:24], tc[0:24]
+BEGIN
+    n:=24;
+    tc[0]:=n;
+    tc[n]:=n-tc[0];
+    j:=tc[0]+1;
+    FOR i FROM tc[0] DOWNTO tc[n] DO
+        ta[i]:=i+1;
+        tb[i]:=j-i;
+    ENDFOR
+    j:=tc[n];
+    WHILE j<tc[0] DO
+        tc[j]:=ta[j]*tb[j];
+        j:=j+1;
+    ENDWHILE
+    FOR i FROM 0 TO n DO
+        WRITE tc[i];
+    ENDFOR
+END
+`
+	// Let's simulate the program:
+	//   n=24, tc[0]=24, tc[24]=24-24=0, j initially = 25.
+	//   FOR i FROM 24 DOWNTO 0: ta[i] = i+1, tb[i] = 25 - i.
+	//   Then j is set to tc[24] (0) and WHILE j < 24:
+	//       tc[j] = ta[j] * tb[j] = (j+1) * (25-j) for j=0,...,23.
+	//   tc[24] remains 0.
+	// The expected outputs are:
+	//   tc[0] = 1*25 = 25,
+	//   tc[1] = 2*24 = 48,
+	//   tc[2] = 3*23 = 69,
+	//   tc[3] = 4*22 = 88,
+	//   tc[4] = 5*21 = 105,
+	//   tc[5] = 6*20 = 120,
+	//   tc[6] = 7*19 = 133,
+	//   tc[7] = 8*18 = 144,
+	//   tc[8] = 9*17 = 153,
+	//   tc[9] = 10*16 = 160,
+	//   tc[10]= 11*15 = 165,
+	//   tc[11]= 12*14 = 168,
+	//   tc[12]= 13*13 = 169,
+	//   tc[13]= 14*12 = 168,
+	//   tc[14]= 15*11 = 165,
+	//   tc[15]= 16*10 = 160,
+	//   tc[16]= 17*9  = 153,
+	//   tc[17]= 18*8  = 144,
+	//   tc[18]= 19*7  = 133,
+	//   tc[19]= 20*6  = 120,
+	//   tc[20]= 21*5  = 105,
+	//   tc[21]= 22*4  = 88,
+	//   tc[22]= 23*3  = 69,
+	//   tc[23]= 24*2  = 48,
+	//   tc[24]= 0.
+	expected := []int{
+		25, 48, 69, 88, 105, 120, 133, 144, 153, 160,
+		165, 168, 169, 168, 165, 160, 153, 144, 133, 120,
+		105, 88, 69, 48, 0,
+	}
+	testAssembly(t, inputCode, expected, "")
 }

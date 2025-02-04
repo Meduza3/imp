@@ -112,20 +112,7 @@ func (l *Lexer) newToken(tokenType token.TokenType, ch byte) token.Token {
 
 func New(input string) *Lexer {
 	input = `
-	PROCEDURE built_in_mult() IS
-  temp, left_sign
-BEGIN
-
-WRITE built_in_left;
-WRITE built_in_right;
-    IF built_in_left <= 0 THEN
-      built_in_right:=0-built_in_right;
-      built_in_left:=0-built_in_left;
-    ENDIF
-
-    built_in_result:=0;
-
-    REPEAT
+	PROCEDURE built_in_mult() IS temp, left_sign BEGIN IF built_in_left <= 0 THEN built_in_right:=0-built_in_right; built_in_left:=0-built_in_left; ENDIF built_in_result:=0; REPEAT
     temp:=built_in_left/2;
     temp:=temp+temp;
     IF temp != built_in_left THEN
